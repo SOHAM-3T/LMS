@@ -102,8 +102,8 @@ DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
         'NAME': 'lms',
-        'USER': 'postgres',
-        'PASSWORD': 'Soham',  # Make sure this matches your PostgreSQL password
+        'USER': '',
+        'PASSWORD': '',  # Make sure this matches your PostgreSQL password
         'HOST': 'localhost',
         'PORT': '5432',
     }
@@ -166,7 +166,7 @@ EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 EMAIL_HOST = 'smtp.gmail.com'
 EMAIL_PORT = 587
 EMAIL_USE_TLS = True
-EMAIL_HOST_USER = 'soham4net@gmail.com'  # Your Gmail address
-EMAIL_HOST_PASSWORD = 'abga glzt iggx vouh'  # Add your 16-character app password here
+EMAIL_HOST_USER = ''  # Your Gmail address
+EMAIL_HOST_PASSWORD = ''  # Add your 16-character app password here
 DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
 
