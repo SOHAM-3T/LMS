@@ -1,80 +1,96 @@
-# 📚 Learning Management System (LMS)
+# 📚 LMS Backend – Django + PostgreSQL
 
-A full-stack Learning Management System designed for academic use, enabling faculty to create dynamic quizzes and students to attempt them with anti-cheating mechanisms. Built with **React + TypeScript (Vite)** frontend and **Django REST Framework** backend.
-
----
-
-## 🚀 Features
-
-### 🧑‍🏫 Faculty/Admin
-- Secure signup & login
-- Create weekly quizzes from a pool of 100 questions
-- Role-based dashboard access
-- Track student performance & percentile
-
-### 👨‍🎓 Students
-- Individualized quiz sets
-- Secure login & dashboard
-- Quiz interface with timer and auto-evaluation
-- Percentile-based performance view
-
-### 🔐 Anti-Cheating Mechanisms
-- Webcam proctoring integration
-- Plagiarism detection on submissions
+A powerful Learning Management System (LMS) backend built using Django and PostgreSQL, with role-based access for students and faculty, JWT authentication, quiz management, and email verification support.
 
 ---
 
-## 🧱 Tech Stack
+## 📌 Features
 
-### 🖥 Frontend
-- **Framework:** React + Vite
-- **Language:** TypeScript
-- **Routing:** React Router
-- **State Management:** React Hooks, Local Storage
-- **Styling:** Tailwind CSS
-- **Icons:** Lucide React
+- ✅ User authentication via JWT
+- ✅ Role-based access control (Student & Faculty)
+- ✅ Secure login/signup with email verification
+- ✅ PostgreSQL database integration
+- ✅ Faculty capabilities:
+  - Upload and manage questions
+  - Generate randomized quizzes
+  - View student performance and results
+- ✅ Student capabilities:
+  - Attempt personalized quizzes
+  - View quiz results
+- ✅ Admin panel support for superusers
 
-### ⚙ Backend
-- **Framework:** Django
-- **API:** Django REST Framework
+---
+
+## 🛠 Tech Stack
+
+- **Backend:** Django, Django REST Framework
 - **Authentication:** JWT (SimpleJWT)
-- **Role-based access control**
-
-### 🛢 Database
-- **DBMS:** PostgreSQL
-- **ORM:** Django ORM
-
----
-
-## 🛠 Development Features
-
-- Token-based authentication
-- RESTful APIs
-- Role-based permissions
-- Error handling and validation
-- Responsive design
-- Clean and modular codebase
+- **Database:** PostgreSQL
+- **Email Service:** Gmail SMTP
+- **Frontend:** React + Vite (in separate repo)
+- **Dev Tools:** VSCode, pgAdmin, Postman
 
 ---
 
-## 🚀 Future Scope
+## 🚀 Setup Instructions
 
-- ✨ Add real-time proctoring with AI-based cheating detection using webcam.
-- 📊 Advanced analytics dashboard for faculties to track student progress.
-- 📱 Mobile app version of LMS using React Native or Flutter.
-- 🧠 Integration of ML-based recommendations for quiz difficulty.
-- 🔒 OAuth-based login (Google/Microsoft) for smoother authentication.
-- 📁 Export results and activity logs as PDFs/Excel files.
-- 🧩 Plug-in support for third-party learning tools (e.g., Coursera, edX).
+```bash
+# Clone the repository
+git clone https://github.com/SOHAM-3T/lms-backend.git
+cd lms-backend
+
+# Create virtual environment
+python -m venv venv
+source venv/bin/activate   # On Windows: .\venv\Scripts\activate
+
+# Install dependencies
+pip install -r requirements.txt
+
+# Run migrations
+python manage.py migrate
+
+# Create a superuser
+python manage.py createsuperuser
+
+# Start the development server
+python manage.py runserver
+```
 
 ---
 
-## 👨‍💻 Author
+## 🔐 Environment Variables
+
+Update your `.env` or add to `settings.py`:
+
+```env
+EMAIL_HOST_USER=your-email@gmail.com
+EMAIL_HOST_PASSWORD=your-app-password
+```
+
+> Note: Enable 2-step verification and generate an App Password from your Google account.
+
+---
+
+## 📈 Future Scope
+
+- 📷 AI-based webcam proctoring during quizzes
+- 📊 Detailed analytics dashboard for faculty
+- 📱 Mobile application (React Native or Flutter)
+- 🔐 OAuth login (Google, Microsoft)
+- 📎 PDF/Excel export for quiz results
+- 🔌 Plugin support for external LMS tools
+
+---
+
+## ✉️ Contact
 
 **Soham Tripathy**  
-Student at NIT Andhra Pradesh CSE Branch 
-
+Student at NIT Andhra Pradesh CSE Branch  
 - GitHub: [@SOHAM-3T](https://github.com/SOHAM-3T)  
 - Email: [soham4net@example.com](mailto:soham4net@example.com)  
 - LinkedIn: [linkedin.com/in/sohamtripathy/](https://www.linkedin.com/in/sohamtripathy/) 
+
+---
+
+**Made with ❤️ for learning and development.**
 
