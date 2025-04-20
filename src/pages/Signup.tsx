@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Link, useSearchParams, useNavigate } from "react-router-dom";
-import { registerUser } from "../api";
+import { registerUser, generateOTP, verifyOTP } from "../api";
 import { Eye, EyeOff } from "lucide-react";
 
 const Signup = () => {
@@ -10,16 +10,41 @@ const Signup = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
+  const [showOTP, setShowOTP] = useState(false);
+  const [otpSent, setOtpSent] = useState(false);
   const [formData, setFormData] = useState({
+    rollNo: "",
     firstName: "",
     lastName: "",
-    username: "",
     email: "",
     password: "",
     confirmPassword: "",
+    branch: "CS",
+    year: "I",
+    otp: "",
   });
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState<string | null>(null);
+
+  const BRANCHES = [
+    { value: "BT", label: "Biotechnology" },
+    { value: "CH", label: "Chemical Engineering" },
+    { value: "CE", label: "Civil Engineering" },
+    { value: "CS", label: "Computer Science & Engg." },
+    { value: "EE", label: "Electrical Engineering" },
+    { value: "EC", label: "Electronics & Communication Engineering" },
+    { value: "ME", label: "Mechanical Engineering" },
+    { value: "MT", label: "Metallurgical & Materials Engineering" },
+    { value: "SC", label: "School of Sciences" },
+    { value: "HM", label: "School of Humanities & Management" },
+  ];
+
+  const YEARS = [
+    { value: "I", label: "First Year" },
+    { value: "II", label: "Second Year" },
+    { value: "III", label: "Third Year" },
+    { value: "IV", label: "Fourth Year" },
+  ];
 
   useEffect(() => {
     if (searchParams.get("type") === "faculty") {
@@ -27,8 +52,14 @@ const Signup = () => {
     }
   }, [searchParams]);
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value });
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
+    const { name, value } = e.target;
+    // For roll number, only allow numbers and limit to 6 digits
+    if (name === "rollNo") {
+      if (value.length > 6) return;
+      if (value && !/^\d+$/.test(value)) return;
+    }
+    setFormData({ ...formData, [name]: value });
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -36,8 +67,14 @@ const Signup = () => {
     setError(null);
     setSuccess(null);
 
-    if (!formData.username.trim() || !formData.email.trim() || !formData.password) {
+    if (!formData.rollNo || !formData.email || !formData.password) {
       setError("Please fill in all required fields");
+      return;
+    }
+
+    // Validate roll number format (6 digits)
+    if (!/^\d{6}$/.test(formData.rollNo)) {
+      setError("Roll number must be exactly 6 digits");
       return;
     }
 
@@ -48,15 +85,46 @@ const Signup = () => {
 
     setIsLoading(true);
     try {
-      await registerUser(
-        formData.username,
-        formData.email,
-        formData.password,
-        formData.firstName,
-        formData.lastName,
-        userType
-      );
-      setSuccess("Signup successful! Redirecting to login...");
+      // First, register the user
+      await registerUser({
+        rollNo: formData.rollNo,
+        email: formData.email,
+        password: formData.password,
+        firstName: formData.firstName,
+        lastName: formData.lastName,
+        branch: formData.branch,
+        year: formData.year,
+        userType: userType
+      });
+      
+      // Then send OTP
+      await generateOTP(formData.email, "signup");
+      setOtpSent(true);
+      setShowOTP(true);
+      setSuccess("OTP sent to your email");
+    } catch (err) {
+      setError(err as string);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleVerifyOTP = async () => {
+    if (!formData.otp) {
+      setError("Please enter the OTP");
+      return;
+    }
+
+    if (formData.otp.length !== 6) {
+      setError("OTP must be 6 digits");
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      await verifyOTP(formData.email, formData.otp, "signup");
+      setSuccess("Email verified successfully! Redirecting to login...");
+      setShowOTP(false);
       setTimeout(() => navigate(`/login?type=${userType}`), 2000);
     } catch (err) {
       setError(err as string);
@@ -79,7 +147,7 @@ const Signup = () => {
         </div>
         <div className="relative z-10 flex flex-col items-center text-center">
           <div onClick={handleLogoClick} className="cursor-pointer mb-8">
-            <img src="nit_ap.png" alt="NIT AP Logo" className="h-64 w-auto transform hover:scale-105 transition-transform duration-300" />
+            <img src="/src/assets/nit_ap.png" alt="NIT AP Logo" className="h-64 w-auto transform hover:scale-105 transition-transform duration-300" />
           </div>
           <h1 className="text-4xl font-bold text-gray-900 mb-4">
             Create {userType === "student" ? "Student" : "Faculty"} Account
@@ -113,10 +181,8 @@ const Signup = () => {
       </div>
 
       {/* Right Section */}
-      <div className="w-1/2 bg-gradient-to-br from-indigo-100 via-blue-50 to-purple-100 p-12 flex items-center justify-center relative">
-  <div className="absolute inset-0 bg-white/60 backdrop-blur-sm"></div>
-
-  <div className="max-w-md w-full relative z-10">
+      <div className="w-1/2 bg-white p-12 overflow-y-auto">
+        <div className="max-w-md mx-auto">
           {error && (
             <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-md">
               <p className="text-red-600 text-sm">{error}</p>
@@ -129,6 +195,24 @@ const Signup = () => {
           )}
 
           <form className="space-y-6" onSubmit={handleSubmit}>
+            <div>
+              <label className="block text-sm font-medium text-gray-700">
+                {userType === "student" ? "Roll Number" : "Faculty ID"}
+              </label>
+              <input
+                name="rollNo"
+                type="text"
+                required
+                pattern="\d{6}"
+                title={userType === "student" ? "Roll number must be exactly 6 digits" : "Faculty ID must be exactly 6 digits"}
+                value={formData.rollNo}
+                onChange={handleChange}
+                maxLength={6}
+                className="mt-1 block w-full border border-gray-300 rounded-lg py-3 px-4 hover:border-blue-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 bg-white/50 backdrop-blur-sm"
+                placeholder={userType === "student" ? "22CS001" : "FAC001"}
+              />
+            </div>
+
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700">First Name</label>
@@ -155,18 +239,40 @@ const Signup = () => {
                 />
               </div>
             </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700">Username</label>
-              <input
-                name="username"
-                type="text"
-                required
-                value={formData.username}
-                onChange={handleChange}
-                className="mt-1 block w-full border border-gray-300 rounded-lg py-3 px-4 hover:border-blue-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 bg-white/50 backdrop-blur-sm"
-                placeholder="johndoe"
-              />
+
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Branch</label>
+                <select
+                  name="branch"
+                  value={formData.branch}
+                  onChange={handleChange}
+                  className="mt-1 block w-full border border-gray-300 rounded-lg py-3 px-4 hover:border-blue-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 bg-white/50 backdrop-blur-sm"
+                >
+                  {BRANCHES.map((branch) => (
+                    <option key={branch.value} value={branch.value}>
+                      {branch.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Year</label>
+                <select
+                  name="year"
+                  value={formData.year}
+                  onChange={handleChange}
+                  className="mt-1 block w-full border border-gray-300 rounded-lg py-3 px-4 hover:border-blue-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 bg-white/50 backdrop-blur-sm"
+                >
+                  {YEARS.map((year) => (
+                    <option key={year.value} value={year.value}>
+                      {year.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
             </div>
+
             <div>
               <label className="block text-sm font-medium text-gray-700">Email</label>
               <input
@@ -176,9 +282,10 @@ const Signup = () => {
                 value={formData.email}
                 onChange={handleChange}
                 className="mt-1 block w-full border border-gray-300 rounded-lg py-3 px-4 hover:border-blue-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 bg-white/50 backdrop-blur-sm"
-                placeholder="john.doe@example.com"
+                placeholder="john.doe@student.nitandhra.ac.in"
               />
             </div>
+
             <div>
               <label className="block text-sm font-medium text-gray-700">Password</label>
               <div className="relative">
@@ -204,6 +311,7 @@ const Signup = () => {
                 </button>
               </div>
             </div>
+
             <div>
               <label className="block text-sm font-medium text-gray-700">Confirm Password</label>
               <div className="relative">
@@ -229,13 +337,12 @@ const Signup = () => {
                 </button>
               </div>
             </div>
-            <div>
+
+            {!otpSent && (
               <button
                 type="submit"
                 disabled={isLoading}
-                className={`w-full py-2.5 px-4 rounded-lg text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-all duration-200 ${
-                  isLoading ? 'opacity-75 cursor-not-allowed' : ''
-                }`}
+                className="w-full py-2.5 px-4 rounded-lg text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-all duration-200"
               >
                 {isLoading ? (
                   <div className="flex items-center justify-center">
@@ -249,7 +356,33 @@ const Signup = () => {
                   'Sign up'
                 )}
               </button>
-            </div>
+            )}
+
+            {showOTP && (
+              <div>
+                <label className="block text-sm font-medium text-gray-700">OTP</label>
+                <div className="flex space-x-2">
+                  <input
+                    name="otp"
+                    type="text"
+                    required
+                    value={formData.otp}
+                    onChange={handleChange}
+                    className="mt-1 block w-full border border-gray-300 rounded-lg py-3 px-4 hover:border-blue-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 bg-white/50 backdrop-blur-sm"
+                    placeholder="Enter 6-digit OTP"
+                    maxLength={6}
+                  />
+                  <button
+                    type="button"
+                    onClick={handleVerifyOTP}
+                    disabled={isLoading}
+                    className="mt-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-all duration-200"
+                  >
+                    Verify
+                  </button>
+                </div>
+              </div>
+            )}
           </form>
 
           <div className="mt-6 text-center">

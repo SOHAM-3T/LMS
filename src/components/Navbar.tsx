@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { BookOpen, Menu, X } from 'lucide-react';
+import { Menu, X } from 'lucide-react';
 
 const Navbar = () => {
   const [isScrolled, setIsScrolled] = useState(false);
@@ -34,9 +34,12 @@ const Navbar = () => {
             <div 
               onClick={handleLogoClick}
               className="flex items-center space-x-2 group cursor-pointer"
+              role="button"
+              tabIndex={0}
+              onKeyPress={(e) => e.key === 'Enter' && handleLogoClick()}
             >
               <img
-                src="nit_ap.png"
+                src="/src/assets/nit_ap.png"
                 alt="NIT AP Logo"
                 className="h-8 w-auto transform group-hover:scale-105 transition-transform duration-300"
               />
@@ -55,6 +58,7 @@ const Navbar = () => {
                   ? 'text-blue-600'
                   : 'text-gray-600 hover:text-blue-600'
               }`}
+              aria-current={isActive('/') ? 'page' : undefined}
             >
               Home
             </Link>
@@ -65,6 +69,7 @@ const Navbar = () => {
                   ? 'text-blue-600'
                   : 'text-gray-600 hover:text-blue-600'
               }`}
+              aria-current={isActive('/login') ? 'page' : undefined}
             >
               Login
             </Link>
@@ -81,6 +86,8 @@ const Navbar = () => {
             <button
               onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
               className="inline-flex items-center justify-center p-2 rounded-md text-gray-600 hover:text-blue-600 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-inset focus:ring-blue-500 transition-colors duration-200"
+              aria-expanded={isMobileMenuOpen}
+              aria-label="Toggle menu"
             >
               {isMobileMenuOpen ? (
                 <X className="h-6 w-6" />
@@ -93,9 +100,12 @@ const Navbar = () => {
       </div>
 
       {/* Mobile Navigation */}
-      <div className={`md:hidden transition-all duration-300 ease-in-out ${
-        isMobileMenuOpen ? 'max-h-48 opacity-100' : 'max-h-0 opacity-0'
-      } overflow-hidden`}>
+      <div 
+        className={`md:hidden transition-all duration-300 ease-in-out ${
+          isMobileMenuOpen ? 'max-h-48 opacity-100 visible' : 'max-h-0 opacity-0 invisible'
+        }`}
+        aria-hidden={!isMobileMenuOpen}
+      >
         <div className="px-2 pt-2 pb-3 space-y-1 bg-white/80 backdrop-blur-md shadow-lg">
           <Link
             to="/"
@@ -105,6 +115,7 @@ const Navbar = () => {
                 : 'text-gray-600 hover:text-blue-600 hover:bg-gray-50'
             }`}
             onClick={() => setIsMobileMenuOpen(false)}
+            aria-current={isActive('/') ? 'page' : undefined}
           >
             Home
           </Link>
@@ -116,6 +127,7 @@ const Navbar = () => {
                 : 'text-gray-600 hover:text-blue-600 hover:bg-gray-50'
             }`}
             onClick={() => setIsMobileMenuOpen(false)}
+            aria-current={isActive('/login') ? 'page' : undefined}
           >
             Login
           </Link>
