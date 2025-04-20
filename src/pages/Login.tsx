@@ -1,7 +1,8 @@
 import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-import { loginUser } from "../api"; // Import the login function
+import { loginUser } from "../api";
 import { Eye, EyeOff } from "lucide-react";
+
 
 const Login = () => {
   const navigate = useNavigate();
@@ -15,12 +16,10 @@ const Login = () => {
   });
   const [error, setError] = useState<string | null>(null);
 
-  // Handle input changes
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
-  // Handle form submission
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError(null);
@@ -30,29 +29,21 @@ const Login = () => {
       const identifier = userType === "student" ? formData.studentId : formData.facultyId;
       const response = await loginUser(identifier, formData.password);
       
-      console.log('Login response:', response);
-
-      // Check if response has the required properties
       if (!response || typeof response.is_faculty === 'undefined' || typeof response.is_student === 'undefined') {
         setError("Invalid response from server");
         return;
       }
 
-      // Store user type in localStorage
       localStorage.setItem('user_type', response.is_faculty ? 'faculty' : 'student');
 
-      // Redirect based on actual user type from backend
       if (response.is_faculty) {
-        console.log('Redirecting to faculty dashboard');
         navigate('/faculty-dashboard', { replace: true });
       } else if (response.is_student) {
-        console.log('Redirecting to student dashboard');
         navigate('/student-dashboard', { replace: true });
       } else {
         setError("Invalid user type");
       }
     } catch (err: any) {
-      console.error('Login error:', err);
       setError(err.message || "Invalid credentials. Please try again.");
     } finally {
       setIsLoading(false);
@@ -64,32 +55,24 @@ const Login = () => {
   };
 
   return (
-    <div className="min-h-[calc(100vh-4rem)] flex items-center justify-center bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 py-12 px-4 sm:px-6 lg:px-8 relative overflow-hidden">
-      {/* Background decorative elements */}
-      <div className="absolute inset-0 overflow-hidden">
-        <div className="absolute -top-40 -right-40 w-80 h-80 bg-blue-200 rounded-full mix-blend-multiply filter blur-xl opacity-70 animate-blob"></div>
-        <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-purple-200 rounded-full mix-blend-multiply filter blur-xl opacity-70 animate-blob animation-delay-2000"></div>
-        <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-80 h-80 bg-indigo-200 rounded-full mix-blend-multiply filter blur-xl opacity-70 animate-blob animation-delay-4000"></div>
-      </div>
-
-      <div className="max-w-md w-full space-y-8 relative z-10">
-        <div className="text-center">
-          <div 
-            onClick={handleLogoClick}
-            className="cursor-pointer inline-block"
-          >
-            <img src="nit_ap.png" alt="NIT AP Logo" className="mx-auto h-20 w-auto transform hover:scale-105 transition-transform duration-300" />
-          </div>
-          <h2 className="mt-6 text-3xl font-extrabold text-gray-900">
-            Welcome Back
-          </h2>
-          <p className="mt-2 text-sm text-gray-600">
-            Sign in to your account
-          </p>
+    <div className="h-screen flex overflow-hidden">
+      {/* Left Section */}
+      <div className="w-1/2 bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 p-12 flex flex-col justify-center relative animate-gradient">
+        <div className="absolute inset-0 overflow-hidden">
+          <div className="absolute -top-40 -right-40 w-80 h-80 bg-blue-200 rounded-full mix-blend-multiply filter blur-xl opacity-70 animate-blob"></div>
+          <div className="absolute -bottom-40 -left-40 w-80 h-80 bg-purple-200 rounded-full mix-blend-multiply filter blur-xl opacity-70 animate-blob animation-delay-2000"></div>
         </div>
-
-        <div className="mt-8 bg-white/80 backdrop-blur-sm py-8 px-4 shadow-xl rounded-lg sm:px-10 border border-gray-100">
-          <div className="flex justify-center space-x-4 mb-6">
+        <div className="relative z-10 flex flex-col items-center text-center">
+          <div onClick={handleLogoClick} className="cursor-pointer mb-8">
+            <img src="nit_ap.png" alt="NIT AP Logo" className="h-64 w-auto transform hover:scale-105 transition-transform duration-300" />
+          </div>
+          <h1 className="text-4xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-indigo-600 mb-4 animate-fade-in">
+            Welcome Back
+          </h1>
+          <p className="text-xl text-gray-600 mb-8 animate-fade-in-delayed">
+            Continue your journey of excellence at NIT AP
+          </p>
+          <div className="flex space-x-4">
             <button
               className={`px-6 py-2 rounded-full transition-all duration-300 ${
                 userType === "student" 
@@ -111,7 +94,14 @@ const Login = () => {
               Faculty
             </button>
           </div>
+        </div>
+      </div>
 
+      {/* Right Section */}
+      <div className="w-1/2 bg-gradient-to-br from-indigo-100 via-blue-50 to-purple-100 p-12 flex items-center justify-center relative">
+  <div className="absolute inset-0 bg-white/60 backdrop-blur-sm"></div>
+
+  <div className="max-w-md w-full relative z-10">
           {error && (
             <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-md">
               <p className="text-red-600 text-sm">{error}</p>
@@ -121,15 +111,15 @@ const Login = () => {
           <form className="space-y-6" onSubmit={handleSubmit}>
             <div>
               <label className="block text-sm font-medium text-gray-700">
-                {userType === "student" ? "Student ID" : "Faculty ID"}
+                Username
               </label>
               <input
                 name={userType === "student" ? "studentId" : "facultyId"}
                 type="text"
+                required
                 value={userType === "student" ? formData.studentId : formData.facultyId}
                 onChange={handleChange}
-                required
-                className="mt-1 block w-full border border-gray-300 rounded-md py-2 px-3 focus:ring-blue-500 focus:border-blue-500 transition-colors duration-200"
+                className="mt-1 block w-full border border-gray-300 rounded-lg py-3 px-4 hover:border-blue-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 bg-white/50 backdrop-blur-sm"
                 placeholder={userType === "student" ? "Enter your Student ID" : "Enter your Faculty ID"}
               />
             </div>
@@ -140,10 +130,10 @@ const Login = () => {
                 <input
                   name="password"
                   type={showPassword ? "text" : "password"}
+                  required
                   value={formData.password}
                   onChange={handleChange}
-                  required
-                  className="mt-1 block w-full border border-gray-300 rounded-md py-2 px-3 focus:ring-blue-500 focus:border-blue-500 transition-colors duration-200 pr-10"
+                  className="mt-1 block w-full border border-gray-300 rounded-lg py-3 px-4 hover:border-blue-400 focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-200 pr-10 bg-white/50 backdrop-blur-sm"
                   placeholder="••••••••"
                 />
                 <button
@@ -164,7 +154,7 @@ const Login = () => {
               <button
                 type="submit"
                 disabled={isLoading}
-                className={`w-full py-2 px-4 rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-all duration-200 ${
+                className={`w-full py-2.5 px-4 rounded-lg text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition-all duration-200 ${
                   isLoading ? 'opacity-75 cursor-not-allowed' : ''
                 }`}
               >
