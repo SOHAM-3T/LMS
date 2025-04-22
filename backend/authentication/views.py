@@ -378,8 +378,10 @@ def get_branch_full_form(branch_code):
         'ME': 'Mechanical Engineering',
         'CE': 'Civil Engineering',
         'MT': 'Metallurgical and Materials Engineering',
-        'CHEM': 'Chemical Engineering',
-        'BT': 'Bio Technology',
+        'CH': 'Chemical Engineering',
+        'HM': 'School of Humanities and Management',
+        'SC': 'School of Sciences',
+        'BT': 'Biotechnology',
     }
     return branch_mapping.get(branch_code, branch_code)
 
