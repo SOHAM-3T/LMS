@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { BookOpen, Users, Clock, Bell, ChevronRight, User, Mail, Award, Search } from 'lucide-react';
+import { BookOpen, Users, Clock, ChevronRight, User, Mail, Award, Search, LogOut, ChevronDown } from 'lucide-react';
 import { getFacultyDetails, getAllStudents } from '../api';
 
 interface FacultyDetails {
@@ -8,6 +8,7 @@ interface FacultyDetails {
   first_name: string;
   last_name: string;
   email: string;
+  branch: string;
   status: string;
 }
 
@@ -24,6 +25,7 @@ interface Student {
 }
 
 const FacultyDashboard = () => {
+  const [showDropdown, setShowDropdown] = useState(false);
   const navigate = useNavigate();
   const [facultyDetails, setFacultyDetails] = useState<FacultyDetails | null>(null);
   const [students, setStudents] = useState<Student[]>([]);
@@ -51,6 +53,7 @@ const FacultyDashboard = () => {
             first_name: facultyData.first_name || '',
             last_name: facultyData.last_name || '',
             email: facultyData.email || '',
+            branch: facultyData.branch || '',
             status: facultyData.status || 'Admin'
           });
         }
@@ -116,13 +119,41 @@ const FacultyDashboard = () => {
               <h1 className="text-3xl font-bold text-gray-900">Welcome back, {fullName}!</h1>
               <p className="text-gray-600 mt-1">Here's an overview of your classes</p>
             </div>
-            <div className="flex items-center space-x-4">
-              <button className="p-2 rounded-full bg-white shadow-md hover:shadow-lg transition-all duration-200">
-                <Bell className="h-5 w-5 text-gray-600" />
-              </button>
-              <div className="h-10 w-10 rounded-full bg-blue-600 flex items-center justify-center text-white font-semibold">
-                {fullName.charAt(0)}
+            <div className="flex items-center space-x-4 relative">
+              <div className="flex items-center">
+                <button 
+                  className="h-10 w-10 rounded-full bg-blue-600 flex items-center justify-center text-white font-semibold hover:bg-blue-700 transition-colors duration-200"
+                  onClick={() => setShowDropdown(!showDropdown)}
+                >
+                  {facultyDetails?.first_name.charAt(0)}
+                </button>
+                <ChevronDown 
+                  className={`h-4 w-4 ml-1 text-gray-600 transition-transform duration-200 ${showDropdown ? 'transform rotate-180' : ''}`}
+                  onClick={() => setShowDropdown(!showDropdown)}
+                />
               </div>
+              {showDropdown && (
+                <div className="absolute right-0 top-12 w-48 bg-white rounded-lg shadow-lg py-2 z-50">
+                  <div className="px-4 py-2 border-b border-gray-100">
+                    <div className="font-medium text-gray-800">{facultyDetails?.first_name} {facultyDetails?.last_name}</div>
+                    <div className="text-sm text-gray-500">{facultyDetails?.username}</div>
+                  </div>
+                  <button className="w-full px-4 py-2 text-left text-gray-700 hover:bg-gray-100 flex items-center">
+                    <Award className="h-4 w-4 mr-2" />
+                    Results
+                  </button>
+                  <button 
+                    onClick={() => {
+                      localStorage.removeItem('access_token');
+                      navigate('/login');
+                    }} 
+                    className="w-full px-4 py-2 text-left text-gray-700 hover:bg-gray-100 flex items-center"
+                  >
+                    <LogOut className="h-4 w-4 mr-2" />
+                    Logout
+                  </button>
+                </div>
+              )}
             </div>
           </div>
 
@@ -198,15 +229,31 @@ const FacultyDashboard = () => {
               <div className="bg-white rounded-xl shadow-md p-6">
                 <h2 className="text-xl font-semibold text-gray-900 mb-6">Faculty Profile</h2>
                 <div className="space-y-4">
+                  {/* Full Name */}
                   <div className="flex items-center space-x-3">
                     <div className="p-2 bg-blue-100 rounded-lg">
                       <User className="h-5 w-5 text-blue-600" />
                     </div>
                     <div>
-                      <p className="text-sm text-gray-600">Username</p>
+                      <p className="text-sm text-gray-600">Full Name</p>
+                      <p className="font-medium text-gray-900">
+                        {facultyDetails ? `${facultyDetails.first_name} ${facultyDetails.last_name}` : 'N/A'}
+                      </p>
+                    </div>
+                  </div>
+
+                  {/* Faculty ID */}
+                  <div className="flex items-center space-x-3">
+                    <div className="p-2 bg-green-100 rounded-lg">
+                      <User className="h-5 w-5 text-green-600" />
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-600">Faculty ID</p>
                       <p className="font-medium text-gray-900">{facultyDetails?.username || 'N/A'}</p>
                     </div>
                   </div>
+
+                  {/* Email */}
                   <div className="flex items-center space-x-3">
                     <div className="p-2 bg-purple-100 rounded-lg">
                       <Mail className="h-5 w-5 text-purple-600" />
@@ -216,6 +263,19 @@ const FacultyDashboard = () => {
                       <p className="font-medium text-gray-900">{facultyDetails?.email || 'N/A'}</p>
                     </div>
                   </div>
+
+                  {/* Branch */}
+                  <div className="flex items-center space-x-3">
+                    <div className="p-2 bg-indigo-100 rounded-lg">
+                      <Award className="h-5 w-5 text-indigo-600" />
+                    </div>
+                    <div>
+                      <p className="text-sm text-gray-600">Branch</p>
+                      <p className="font-medium text-gray-900">{facultyDetails?.branch || 'N/A'}</p>
+                    </div>
+                  </div>
+
+                  {/* Status */}
                   <div className="flex items-center space-x-3">
                     <div className="p-2 bg-green-100 rounded-lg">
                       <Award className="h-5 w-5 text-green-600" />

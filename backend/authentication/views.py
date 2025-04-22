@@ -355,11 +355,12 @@ class StudentDetailsView(APIView):
             # Return student details
             return Response({
                 'id': user.id,
+                'username': user.username,
                 'roll_no': user.roll_no,
                 'email': user.email,
                 'first_name': user.first_name,
                 'last_name': user.last_name,
-                'branch': user.branch,
+                'branch': get_branch_full_form(user.branch),
                 'year': user.year,
                 'is_active': user.is_active
             })
@@ -367,6 +368,64 @@ class StudentDetailsView(APIView):
             return Response(
                 {'error': str(e)},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+def get_branch_full_form(branch_code):
+    branch_mapping = {
+        'CS': 'Computer Science and Engineering',
+        'EC': 'Electronics and Communication Engineering',
+        'EE': 'Electrical and Electronics Engineering',
+        'ME': 'Mechanical Engineering',
+        'CE': 'Civil Engineering',
+        'MT': 'Metallurgical and Materials Engineering',
+        'CHEM': 'Chemical Engineering',
+        'BT': 'Bio Technology',
+    }
+    return branch_mapping.get(branch_code, branch_code)
+
+class RefreshTokenView(APIView):
+    def post(self, request):
+        try:
+            refresh_token = request.data.get('refresh_token')
+            if not refresh_token:
+                return Response(
+                    {'error': 'Refresh token is required'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+
+            # Verify the refresh token
+            try:
+                payload = jwt.decode(
+                    refresh_token,
+                    settings.SECRET_KEY,
+                    algorithms=['HS256']
+                )
+            except jwt.ExpiredSignatureError:
+                return Response(
+                    {'error': 'Refresh token has expired'},
+                    status=status.HTTP_401_UNAUTHORIZED
+                )
+            except jwt.InvalidTokenError:
+                return Response(
+                    {'error': 'Invalid refresh token'},
+                    status=status.HTTP_401_UNAUTHORIZED
+                )
+
+            # Get user from payload
+            user_id = payload.get('user_id')
+            User = get_user_model()
+            user = User.objects.get(id=user_id)
+
+            # Generate new access token
+            access_token = generate_access_token(user)
+
+            return Response({
+                'access_token': access_token
+            })
+        except Exception as e:
+            return Response(
+                {'error': str(e)},
+                status=status.HTTP_400_BAD_REQUEST
             )
 
 class FacultyDetailsView(APIView):
@@ -386,6 +445,7 @@ class FacultyDetailsView(APIView):
                 "first_name": user.first_name,
                 "last_name": user.last_name,
                 "email": user.email,
+                "branch": get_branch_full_form(user.branch),
                 "status": "Admin"  # Common status for all faculties
             }, status=status.HTTP_200_OK)
         except Exception as e:
