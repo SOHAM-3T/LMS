@@ -6,29 +6,29 @@ A powerful Learning Management System (LMS) backend built using Django and Postg
 
 ## 📌 Features
 
-- ✅ User authentication via JWT
-- ✅ Role-based access control (Student & Faculty)
-- ✅ Secure login/signup with email verification
-- ✅ PostgreSQL database integration
+- ✅ User authentication via JWT  
+- ✅ Role-based access control (Student & Faculty)  
+- ✅ Secure login/signup with email verification  
+- ✅ PostgreSQL database integration  
 - ✅ Faculty capabilities:
-  - Upload and manage questions
-  - Generate randomized quizzes
-  - View student performance and results
+  - ✅ Upload and manage questions
+  - ✅ Generate randomized quizzes
+  - ⏳ View student performance and results (in progress)
 - ✅ Student capabilities:
-  - Attempt personalized quizzes
-  - View quiz results
+  - ✅ Attempt personalized quizzes (in progress)
+  - ⏳ View quiz results (in progress)
 - ✅ Admin panel support for superusers
 
 ---
 
 ## 🛠 Tech Stack
 
-- **Backend:** Django, Django REST Framework
-- **Authentication:** JWT (SimpleJWT)
-- **Database:** PostgreSQL
-- **Email Service:** Gmail SMTP
-- **Frontend:** React + Vite (in separate repo)
-- **Dev Tools:** VSCode, pgAdmin, Postman
+- **Backend:** Django, Django REST Framework  
+- **Authentication:** JWT (SimpleJWT)  
+- **Database:** PostgreSQL  
+- **Email Service:** Gmail SMTP  
+- **Frontend:** React + Vite (in separate repo)  
+- **Dev Tools:** VSCode, pgAdmin, Postman  
 
 ---
 
@@ -54,6 +54,7 @@ python manage.py createsuperuser
 
 # Start the development server
 python manage.py runserver
+
 ```
 
 ---
