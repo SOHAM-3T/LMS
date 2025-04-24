@@ -44,7 +44,8 @@ INSTALLED_APPS = [
     'rest_framework_simplejwt',
 
     # Your apps
-    'authentication',  # Add this line
+    'authentication',  
+    'quiz.apps.QuizConfig',  
 ]
 
 REST_FRAMEWORK = {
@@ -169,4 +170,3 @@ EMAIL_USE_TLS = True
 EMAIL_HOST_USER = 'soham4net@gmail.com'  # Your Gmail address
 EMAIL_HOST_PASSWORD = 'rylj fqre lwlu zpcv'  # Add your 16-character app password here
 DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
-

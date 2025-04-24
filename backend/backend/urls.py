@@ -25,7 +25,6 @@ def home(request):
 urlpatterns = [
     path("admin/", admin.site.urls),
     path("auth/", include("authentication.urls")),  # Ensure authentication URLs are included
+    path("quiz/", include("quiz.urls")),  # Add quiz URLs
     path("", home, name="home"),  # Add a home route
 ]
-
-

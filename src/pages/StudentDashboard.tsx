@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Clock, Calendar, Award, ChevronRight, User, Mail, LogOut, ChevronDown } from 'lucide-react';
+import { Clock, Award, ChevronRight, User, Mail, LogOut, ChevronDown } from 'lucide-react';
 import { getStudentDetails } from '../api';
+import { getStudentQuizzes, getStudentQuizQuestions, submitQuizAnswer } from '../api/quiz';
 
 interface StudentDetails {
   id: number;
@@ -16,15 +17,41 @@ interface StudentDetails {
   is_faculty?: boolean;
 }
 
+interface Quiz {
+  id: string;
+  title: string;
+  course_id: string;
+  topic: string;
+  difficulty: string;
+  created_at: string;
+  completed?: boolean;
+  inProgress: boolean;
+  score?: number;
+  is_completed?: boolean;
+  completed_questions?: number;
+  total_questions?: number;
+}
+
+interface QuizQuestion {
+  id: string;
+  quiz_id: string;
+  assignment_id: string;
+  text: string;
+  submitted: boolean;
+  score?: number;
+}
+
 const StudentDashboard = () => {
   const [showDropdown, setShowDropdown] = useState(false);
   const navigate = useNavigate();
   const [studentDetails, setStudentDetails] = useState<StudentDetails | null>(null);
+  const [quizzes, setQuizzes] = useState<Quiz[]>([]);
+  const [quizQuestions, setQuizQuestions] = useState<QuizQuestion[]>([]); // Explicit type annotation added
+  const [currentAnswer, setCurrentAnswer] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    // Check if user is faculty and redirect if needed
     const checkUserType = async () => {
       try {
         const token = localStorage.getItem('access_token');
@@ -33,8 +60,11 @@ const StudentDashboard = () => {
           return;
         }
 
-        // Try to get student details
-        const data = await getStudentDetails();
+        const [data, quizData] = await Promise.all([
+          getStudentDetails(),
+          getStudentQuizzes()
+        ]);
+
         console.log('Student Details Response:', {
           data,
           roll_no: data.roll_no,
@@ -42,8 +72,8 @@ const StudentDashboard = () => {
           last_name: data.last_name,
           email: data.email
         });
+
         if (data.is_faculty) {
-          // If user is faculty, redirect to faculty dashboard
           navigate('/faculty-dashboard');
           return;
         }
@@ -62,6 +92,14 @@ const StudentDashboard = () => {
             is_faculty: data.is_faculty
           });
         }
+
+        if (quizData) {
+          setQuizzes(quizData.map((quiz: Quiz) => ({
+            ...quiz,
+            completed: quiz.is_completed,
+            inProgress: false
+          })));
+        }
       } catch (err: any) {
         console.error('Error fetching student details:', err);
         setError(err.message);
@@ -75,6 +113,85 @@ const StudentDashboard = () => {
 
     checkUserType();
   }, [navigate]);
+
+  const handleQuizClick = async (quiz: Quiz) => {
+    try {
+      // Check if quiz is already completed
+      if (quiz.completed) {
+        setError("This quiz has already been completed.");
+        return;
+      }
+      
+      // Get the questions and update the quiz status
+      const questions = await getStudentQuizQuestions(quiz.id);
+      console.log('Quiz Questions Response:', questions); // Debug log
+      
+      // Transform questions to ensure we have the question text
+      const transformedQuestions = questions.map((q: any) => ({
+        id: q.id,
+        quiz_id: q.quiz_id,
+        assignment_id: q.assignment_id,
+        text: q.question || q.text || q.question_text || 'Question text not available',
+        submitted: q.submitted || false,
+        score: q.score
+      }));
+      
+      // Update the quiz in the quizzes list as in-progress
+      setQuizzes(quizzes.map(q => 
+        q.id === quiz.id 
+          ? { ...q, inProgress: true }
+          : { ...q, inProgress: false }  // Set other quizzes to not in-progress
+      ));
+      
+      // Set the questions for this quiz
+      setQuizQuestions(transformedQuestions);
+
+      // Clear any previous answers and errors
+      setCurrentAnswer('');
+      setError(null);
+    } catch (err: any) {
+      console.error('Error fetching quiz questions:', err);
+      setError(err.message);
+    }
+  };
+
+  const handleAnswerSubmit = async (assignmentId: string, quizId: string) => {
+    try {
+      if (!currentAnswer.trim()) {
+        setError("Please provide an answer before submitting.");
+        return;
+      }
+
+      await submitQuizAnswer(assignmentId, currentAnswer);
+      
+      // Update the question status
+      setQuizQuestions(prevQuestions =>
+        prevQuestions.map(q =>
+          q.assignment_id === assignmentId ? { ...q, submitted: true } : q
+        )
+      );
+
+      // Clear the current answer
+      setCurrentAnswer('');
+
+      // Find next unanswered question
+      const nextQuestion = quizQuestions.find(q => !q.submitted);
+      if (nextQuestion) {
+        // navigate(`/quiz/${quizId}/question/${nextQuestion.id}`);
+      } else {
+        // All questions answered, mark quiz as completed
+        setQuizzes(prevQuizzes =>
+          prevQuizzes.map(q =>
+            q.id === quizId ? { ...q, completed: true, inProgress: false } : q
+          )
+        );
+        // navigate('/student-dashboard');
+      }
+    } catch (err: any) {
+      console.error('Error submitting answer:', err);
+      setError(err.message);
+    }
+  };
 
   if (isLoading) {
     return (
@@ -178,48 +295,58 @@ const StudentDashboard = () => {
 
           {/* Main Content Grid */}
           <div className="grid lg:grid-cols-3 gap-8">
-            {/* Upcoming Exams */}
-            <div className="lg:col-span-2 bg-white rounded-xl shadow-md p-6">
-              <div className="flex items-center justify-between mb-6">
-                <h2 className="text-xl font-semibold text-gray-900">Upcoming Exams</h2>
-                <button className="text-blue-600 hover:text-blue-700 text-sm font-medium flex items-center">
-                  View All <ChevronDown className="h-4 w-4 ml-1" />
-                  View All <ChevronRight className="h-4 w-4 ml-1" />
-                </button>
-              </div>
-              <div className="space-y-4">
-                <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors duration-200">
-                  <div className="flex items-center space-x-4">
-                    <div className="p-2 bg-blue-100 rounded-lg">
-                      <Calendar className="h-5 w-5 text-blue-600" />
+            {/* Left Column - Upcoming Exams */}
+            <div className="lg:col-span-2">
+              {/* Upcoming Exams Section */}
+              <div className="bg-white rounded-xl shadow-md p-6">
+                <h2 className="text-xl font-semibold text-gray-900 mb-6">Upcoming Exams</h2>
+                <div className="space-y-4">
+                  {quizzes.map((quiz) => (
+                    <div 
+                      key={quiz.id} 
+                      className="p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-all duration-200"
+                    >
+                      <div className="flex items-center justify-between">
+                        <div>
+                          <h3 className="font-medium text-gray-900 mb-1">
+                            {quiz.title}
+                          </h3>
+                          <div className="flex items-center text-sm text-gray-600">
+                            <span>Topic: {quiz.topic}</span>
+                            <span className="mx-2 text-gray-400">•</span>
+                            <span>Difficulty: {quiz.difficulty}</span>
+                          </div>
+                        </div>
+                        <div className="flex items-center">
+                          {quiz.completed ? (
+                            <div className="flex items-center text-green-600">
+                              <Award className="h-4 w-4 mr-1" />
+                              <span className="text-sm font-medium">Attempted</span>
+                              {quiz.score !== undefined && (
+                                <span className="ml-1 text-sm font-medium">• Score: {quiz.score}%</span>
+                              )}
+                            </div>
+                          ) : (
+                            <button
+                              onClick={() => handleQuizClick(quiz)}
+                              className="flex items-center text-blue-600 hover:text-blue-800"
+                            >
+                              <span className="mr-1">Start</span>
+                              <ChevronRight className="h-4 w-4" />
+                            </button>
+                          )}
+                        </div>
+                      </div>
                     </div>
-                    <div>
-                      <h3 className="font-medium text-gray-900">Mathematics Final</h3>
-                      <p className="text-sm text-gray-600">March 15, 2024 • 10:00 AM</p>
-                    </div>
-                  </div>
-                  <button className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors duration-200">
-                    Start
-                  </button>
-                </div>
-                <div className="flex items-center justify-between p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors duration-200">
-                  <div className="flex items-center space-x-4">
-                    <div className="p-2 bg-purple-100 rounded-lg">
-                      <Calendar className="h-5 w-5 text-purple-600" />
-                    </div>
-                    <div>
-                      <h3 className="font-medium text-gray-900">Physics Quiz</h3>
-                      <p className="text-sm text-gray-600">March 20, 2024 • 2:00 PM</p>
-                    </div>
-                  </div>
-                  <button className="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors duration-200">
-                    Start
-                  </button>
+                  ))}
+                  {quizzes.length === 0 && (
+                    <p className="text-gray-600 text-center py-4">No exams available at the moment.</p>
+                  )}
                 </div>
               </div>
             </div>
 
-            {/* Profile and Performance Section */}
+            {/* Right Column - Profile and Performance Section */}
             <div className="space-y-8">
               {/* Profile Section */}
               <div className="bg-white rounded-xl shadow-md p-6">
@@ -310,6 +437,47 @@ const StudentDashboard = () => {
               </div>
             </div>
           </div>
+
+          {/* Add Quiz Questions Section */}
+          {quizzes.find((q: Quiz) => q.inProgress) && quizQuestions.length > 0 && (
+            <div className="bg-white rounded-xl shadow-md p-6 mt-6">
+              <h2 className="text-xl font-semibold text-gray-900 mb-6">
+                {quizzes.find((q: Quiz) => q.inProgress)?.title}
+              </h2>
+              <div className="mb-4 space-y-1">
+                <p className="text-sm text-gray-600">Topic: {quizzes.find((q: Quiz) => q.inProgress)?.topic}</p>
+                <p className="text-sm text-gray-600">Progress: {quizQuestions.filter(q => q.submitted).length} of {quizQuestions.length} questions completed</p>
+              </div>
+              {quizQuestions.map((question, index) => (
+                <div key={question.id} className="mb-6 last:mb-0 p-4 border border-gray-200 rounded-lg">
+                  <div className="mb-4">
+                    <h3 className="text-lg font-semibold text-gray-900 mb-2">Question {index + 1}</h3>
+                    <p className="text-gray-800 whitespace-pre-wrap">{question.text}</p>
+                  </div>
+                  {!question.submitted && (
+                    <div className="space-y-4">
+                      <textarea
+                        value={currentAnswer}
+                        onChange={(e) => setCurrentAnswer(e.target.value)}
+                        className="w-full p-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                        placeholder="Type your answer here..."
+                        rows={4}
+                      />
+                      <button
+                        onClick={() => handleAnswerSubmit(question.assignment_id, question.quiz_id)}
+                        className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
+                      >
+                        Submit Answer
+                      </button>
+                    </div>
+                  )}
+                  {question.submitted && (
+                    <p className="text-green-600 font-medium">Answer submitted</p>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </div>
     </div>
