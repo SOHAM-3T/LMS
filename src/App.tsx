@@ -14,7 +14,7 @@ function AppContent() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50">
-      {!['/login', '/signup', '/forgot-password'].includes(location.pathname) && <Navbar />}
+      {!['/login', '/signup', '/forgot-password', '/create-quiz'].includes(location.pathname) && <Navbar />}
       <Routes>
         <Route path="/" element={<Home />} />
         <Route path="/login" element={<Login />} />

@@ -6,7 +6,9 @@ from rest_framework.permissions import IsAuthenticated
 from django.db import connection, transaction
 from django.contrib.auth import get_user_model
 from .models import Quiz, QuizAssignment, Question
+from .serializers import QuestionSerializer, QuizSerializer
 import logging
+import json
 from django.utils import timezone
 from django.db.models import Q
 import random
@@ -35,89 +37,32 @@ def delete_quiz(request, quiz_id):
 @permission_classes([IsAuthenticated])
 def create_quiz(request):
     try:
-        # Verify faculty status
         if not request.user.is_faculty:
-            return Response({"error": "Only faculty members can create quizzes"}, 
-                          status=status.HTTP_403_FORBIDDEN)
+            return Response({"error": "Only faculty members can create quizzes"}, status=status.HTTP_403_FORBIDDEN)
 
-        # Validate required fields
-        required_fields = ['title', 'course_id', 'topic', 'difficulty', 'questions_per_student', 'questions']
-        for field in required_fields:
-            if field not in request.data:
-                return Response({"error": f"Missing required field: {field}"}, 
-                              status=status.HTTP_400_BAD_REQUEST)
-
-        # Check if we have enough questions provided
-        if len(request.data['questions']) < request.data['questions_per_student']:
-            return Response(
-                {"error": f"Not enough questions provided. Need at least {request.data['questions_per_student']} questions."},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-
-        with transaction.atomic():
-            # Create quiz
-            quiz = Quiz.objects.create(
-                title=request.data['title'],
-                course_id=request.data['course_id'],
-                topic=request.data['topic'],
-                difficulty=request.data['difficulty'],
-                questions_per_student=request.data['questions_per_student'],
-                created_by=request.user
-            )
-
-            # Create questions
-            questions = []
-            for question_text in request.data['questions']:
-                question = Question.objects.create(
-                    text=question_text,
-                    topic=quiz.topic,
-                    difficulty=quiz.difficulty,
-                    created_by=request.user
-                )
-                questions.append(question)
-
-            # Get active students
+        serializer = QuizSerializer(data=request.data, context={'request': request})
+        if serializer.is_valid():
+            quiz = serializer.save()
             User = get_user_model()
             students = User.objects.filter(is_student=True, is_active=True)
-
-            # Assign questions to students
-            assignments = []
-            for student in students:
-                # Get random questions for this student
-                student_questions = list(questions)  # Create a copy of the list
-                random.shuffle(student_questions)  # Shuffle the questions
-                student_questions = student_questions[:quiz.questions_per_student]  # Take required number of questions
-                
-                # Create assignments
-                for question in student_questions:
-                    assignments.append(
-                        QuizAssignment(
-                            quiz=quiz,
-                            student=student,
-                            question=question
-                        )
-                    )
-            
-            # Bulk create all assignments
-            QuizAssignment.objects.bulk_create(assignments)
-
-        return Response({
-            'id': quiz.id,
-            'title': quiz.title,
-            'course_id': quiz.course_id,
-            'topic': quiz.topic,
-            'difficulty': quiz.difficulty,
-            'created_at': quiz.created_at,
-            'total_students': len(students),
-            'completed_students': 0  # New quiz, so 0 completed
-        }, status=status.HTTP_201_CREATED)
-
+            questions_data = serializer.data.get('questions', [])
+            return Response({
+                'id': quiz.id,
+                'title': quiz.title,
+                'course_id': quiz.course_id,
+                'topic': quiz.topic,
+                'difficulty': quiz.difficulty,
+                'questions_per_student': quiz.questions_per_student,
+                'questions': questions_data,
+                'created_at': quiz.created_at,
+                'total_students': len(students),
+                'completed_students': 0
+            }, status=status.HTTP_201_CREATED)
+        else:
+            return Response(serializer.errors, status=400)
     except Exception as e:
         logger.error(f"Error creating quiz: {str(e)}")
-        return Response(
-            {"error": "Failed to create quiz. Please try again."},
-            status=status.HTTP_500_INTERNAL_SERVER_ERROR
-        )
+        return Response({"error": "Failed to create quiz. Please try again."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
@@ -350,58 +295,24 @@ def quiz_detail_and_edit(request, quiz_id):
                 if quiz.created_by.id != request.user.id:
                     logger.warning(f"quiz_detail: Forbidden. Request user id={request.user.id}, quiz.created_by.id={quiz.created_by.id}")
                     return Response({"error": "You can only view quizzes you created"}, status=status.HTTP_403_FORBIDDEN)
-            questions = list(Question.objects.filter(quizassignment__quiz=quiz).values_list('text', flat=True).distinct())
-            total_students = QuizAssignment.objects.filter(quiz=quiz).values('student').distinct().count()
-            completed_students = QuizAssignment.objects.filter(quiz=quiz, completed=True).values('student').distinct().count()
-            data = {
-                'id': quiz.id,
-                'title': quiz.title,
-                'course_id': quiz.course_id,
-                'topic': quiz.topic,
-                'difficulty': quiz.difficulty,
-                'questions_per_student': quiz.questions_per_student,
-                'questions': questions,
-                'created_at': quiz.created_at,
-                'total_students': total_students,
-                'completed_students': completed_students,
-            }
-            return Response(data)
+            from .serializers import QuizSerializer
+            serializer = QuizSerializer(quiz)
+            return Response(serializer.data)
         elif request.method == 'PUT':
+            print('quiz_detail_and_edit PUT called')
+            print('Incoming data:', request.data)
+            questions = request.data.get('questions', None)
+            print('Incoming questions:', questions)
             if not request.user.is_faculty or quiz.created_by.id != request.user.id:
                 return Response({"error": "You can only edit quizzes you created."}, status=status.HTTP_403_FORBIDDEN)
-            data = request.data
-            for field in ['title', 'course_id', 'topic', 'difficulty', 'questions_per_student']:
-                if field in data:
-                    setattr(quiz, field, data[field])
-            quiz.save()
-
-            # --- UPDATE QUESTIONS LOGIC ---
-            if 'questions' in data:
-                new_questions_texts = [q.strip() for q in data['questions'] if q.strip()]
-                # Get all existing assignments for this quiz
-                assignments = QuizAssignment.objects.filter(quiz=quiz)
-                existing_questions = set(assignments.values_list('question__text', flat=True))
-                # Remove assignments for questions that are no longer present
-                assignments.exclude(question__text__in=new_questions_texts).delete()
-                # Add new questions and assignments if needed
-                for q_text in new_questions_texts:
-                    if q_text not in existing_questions:
-                        # Create Question
-                        question = Question.objects.create(
-                            text=q_text,
-                            topic=quiz.topic,
-                            difficulty=quiz.difficulty,
-                            created_by=request.user
-                        )
-                        # Assign to all active students
-                        User = get_user_model()
-                        students = User.objects.filter(is_student=True, is_active=True)
-                        new_assignments = [
-                            QuizAssignment(quiz=quiz, student=student, question=question)
-                            for student in students
-                        ]
-                        QuizAssignment.objects.bulk_create(new_assignments)
-            return Response({"success": True, "quiz_id": quiz.id})
+            from .serializers import QuizSerializer
+            serializer = QuizSerializer(quiz, data=request.data, context={'request': request})
+            if serializer.is_valid():
+                serializer.save()
+                return Response(serializer.data)
+            else:
+                print(serializer.errors)
+                return Response(serializer.errors, status=400)
     except Quiz.DoesNotExist:
         logger.error(f"quiz_detail: Quiz with id={quiz_id} does not exist.")
         return Response({"error": "Quiz not found"}, status=status.HTTP_404_NOT_FOUND)

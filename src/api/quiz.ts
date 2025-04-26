@@ -1,13 +1,21 @@
 import axios from 'axios';
 import { API_URL } from './config';
 
+export interface QuestionData {
+  text: string;
+  type: 'mcq' | 'short_answer' | 'true_false';
+  options?: string[];
+  correct_answer?: string[];
+  image?: File | null;
+}
+
 interface CreateQuizData {
   title: string;
   course_id: string;
   topic: string;
   difficulty: string;
   questions_per_student: number;
-  questions: string[];
+  questions: QuestionData[];
 }
 
 // Add error handling middleware
@@ -45,8 +53,20 @@ export const createQuiz = async (quizData: CreateQuizData) => {
   if (!token) {
     throw new Error('No authentication token found');
   }
-  const response = await axios.post(`${API_URL}/quiz/create/`, quizData, {
-    headers: { Authorization: `Bearer ${token}` }
+  // Support image upload (multipart/form-data)
+  const formData = new FormData();
+  formData.append('title', quizData.title);
+  formData.append('course_id', quizData.course_id);
+  formData.append('topic', quizData.topic);
+  formData.append('difficulty', quizData.difficulty);
+  formData.append('questions_per_student', quizData.questions_per_student.toString());
+  // Pass questions as a JSON string
+  formData.append('questions', JSON.stringify(quizData.questions));
+  const response = await axios.post(`${API_URL}/quiz/create/`, formData, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+      'Content-Type': 'multipart/form-data',
+    }
   });
   return response.data;
 };
@@ -78,8 +98,19 @@ export const updateQuiz = async (quizId: string, quizData: CreateQuizData) => {
   if (!token) {
     throw new Error('No authentication token found');
   }
-  const response = await axios.put(`${API_URL}/quiz/quiz/${quizId}/`, quizData, {
-    headers: { Authorization: `Bearer ${token}` }
+  // Send as multipart/form-data, but questions as a JSON string for backend compatibility
+  const formData = new FormData();
+  formData.append('title', quizData.title);
+  formData.append('course_id', quizData.course_id);
+  formData.append('topic', quizData.topic);
+  formData.append('difficulty', quizData.difficulty);
+  formData.append('questions_per_student', quizData.questions_per_student.toString());
+  formData.append('questions', JSON.stringify(quizData.questions));
+  const response = await axios.put(`${API_URL}/quiz/quiz/${quizId}/`, formData, {
+    headers: {
+      Authorization: `Bearer ${token}`,
+      'Content-Type': 'multipart/form-data',
+    }
   });
   return response.data;
 };

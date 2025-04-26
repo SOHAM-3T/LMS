@@ -11,11 +11,22 @@ class Question(models.Model):
         ('hard', 'Hard')
     ]
     
+    QUESTION_TYPE_CHOICES = [
+        ('mcq', 'Multiple Choice'),
+        ('short_answer', 'Short Answer'),
+        ('true_false', 'True/False'),
+    ]
+    
     text = models.TextField()
     topic = models.CharField(max_length=100)
     difficulty = models.CharField(max_length=10, choices=DIFFICULTY_CHOICES)
+    type = models.CharField(max_length=20, choices=QUESTION_TYPE_CHOICES, default='short_answer')
+    options = models.JSONField(null=True, blank=True, help_text='List of options for MCQ')
+    correct_answer = models.JSONField(null=True, blank=True, help_text='Correct answer(s) for MCQ/TrueFalse')
+    image = models.ImageField(upload_to='question_images/', null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     created_by = models.ForeignKey(User, on_delete=models.CASCADE)
+    quiz = models.ForeignKey('Quiz', related_name='questions', on_delete=models.CASCADE, null=True)
 
     class Meta:
         app_label = 'quiz'
