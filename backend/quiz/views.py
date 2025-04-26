@@ -321,3 +321,74 @@ def get_quiz_results(request, quiz_id):
             {"error": "Failed to fetch results. Please try again."},
             status=status.HTTP_500_INTERNAL_SERVER_ERROR
         )
+
+@api_view(['GET', 'PUT'])
+@permission_classes([IsAuthenticated])
+def quiz_detail_and_edit(request, quiz_id):
+    """GET: Fetch quiz details; PUT: Edit quiz (faculty only)"""
+    try:
+        quiz = Quiz.objects.get(id=quiz_id)
+        if request.method == 'GET':
+            logger.info(f"quiz_detail: Request user id={request.user.id}, quiz.created_by.id={quiz.created_by.id}")
+            if request.user.is_faculty:
+                if quiz.created_by.id != request.user.id:
+                    logger.warning(f"quiz_detail: Forbidden. Request user id={request.user.id}, quiz.created_by.id={quiz.created_by.id}")
+                    return Response({"error": "You can only view quizzes you created"}, status=status.HTTP_403_FORBIDDEN)
+            questions = list(Question.objects.filter(quizassignment__quiz=quiz).values_list('text', flat=True).distinct())
+            total_students = QuizAssignment.objects.filter(quiz=quiz).values('student').distinct().count()
+            completed_students = QuizAssignment.objects.filter(quiz=quiz, completed=True).values('student').distinct().count()
+            data = {
+                'id': quiz.id,
+                'title': quiz.title,
+                'course_id': quiz.course_id,
+                'topic': quiz.topic,
+                'difficulty': quiz.difficulty,
+                'questions_per_student': quiz.questions_per_student,
+                'questions': questions,
+                'created_at': quiz.created_at,
+                'total_students': total_students,
+                'completed_students': completed_students,
+            }
+            return Response(data)
+        elif request.method == 'PUT':
+            if not request.user.is_faculty or quiz.created_by.id != request.user.id:
+                return Response({"error": "You can only edit quizzes you created."}, status=status.HTTP_403_FORBIDDEN)
+            data = request.data
+            for field in ['title', 'course_id', 'topic', 'difficulty', 'questions_per_student']:
+                if field in data:
+                    setattr(quiz, field, data[field])
+            quiz.save()
+
+            # --- UPDATE QUESTIONS LOGIC ---
+            if 'questions' in data:
+                new_questions_texts = [q.strip() for q in data['questions'] if q.strip()]
+                # Get all existing assignments for this quiz
+                assignments = QuizAssignment.objects.filter(quiz=quiz)
+                existing_questions = set(assignments.values_list('question__text', flat=True))
+                # Remove assignments for questions that are no longer present
+                assignments.exclude(question__text__in=new_questions_texts).delete()
+                # Add new questions and assignments if needed
+                for q_text in new_questions_texts:
+                    if q_text not in existing_questions:
+                        # Create Question
+                        question = Question.objects.create(
+                            text=q_text,
+                            topic=quiz.topic,
+                            difficulty=quiz.difficulty,
+                            created_by=request.user
+                        )
+                        # Assign to all active students
+                        User = get_user_model()
+                        students = User.objects.filter(is_student=True, is_active=True)
+                        new_assignments = [
+                            QuizAssignment(quiz=quiz, student=student, question=question)
+                            for student in students
+                        ]
+                        QuizAssignment.objects.bulk_create(new_assignments)
+            return Response({"success": True, "quiz_id": quiz.id})
+    except Quiz.DoesNotExist:
+        logger.error(f"quiz_detail: Quiz with id={quiz_id} does not exist.")
+        return Response({"error": "Quiz not found"}, status=status.HTTP_404_NOT_FOUND)
+    except Exception as e:
+        logger.error(f"Error in quiz_detail_and_edit: {str(e)}")
+        return Response({"error": "Failed to process quiz detail/edit. Please try again."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

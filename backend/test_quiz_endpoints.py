@@ -33,19 +33,32 @@ def test_faculty_endpoints(token):
         'course_id': 'CS101',
         'topic': 'Python Fundamentals',
         'difficulty': 'medium',
-        'questions_per_student': 3
+        'questions_per_student': 3,
+        'questions': ['Q1', 'Q2', 'Q3', 'Q4']
     }
     response = requests.post(f'{BASE_URL}/quiz/create/', json=quiz_data, headers=headers)
     print(f"Status: {response.status_code}")
-    print(f"Response: {json.dumps(response.json(), indent=2)}")
-    
+    created_quiz = response.json()
+    print(f"Response: {json.dumps(created_quiz, indent=2)}")
+
+    # Fetch the quiz by ID using the new endpoint
+    if response.status_code == 201 and 'id' in created_quiz:
+        quiz_id = created_quiz['id']
+        print_separator()
+        print(f"1b. Fetching quiz by ID ({quiz_id}) using /quiz/quiz/{quiz_id}/ ...")
+        response = requests.get(f'{BASE_URL}/quiz/quiz/{quiz_id}/', headers=headers)
+        if response.status_code == 200:
+            print(f"Response: {json.dumps(response.json(), indent=2)}")
+        else:
+            print(f"Error {response.status_code}: {response.text}")
+
     # Get faculty quizzes
     print_separator()
     print("2. Getting faculty quizzes...")
     response = requests.get(f'{BASE_URL}/quiz/faculty/quizzes/', headers=headers)
     print(f"Status: {response.status_code}")
     print(f"Response: {json.dumps(response.json(), indent=2)}")
-    
+
     # Get quiz results (using the first quiz from the list)
     if response.status_code == 200 and response.json():
         quiz_id = response.json()[0]['id']
@@ -76,7 +89,7 @@ def test_student_endpoints(token):
         response = requests.get(f'{BASE_URL}/quiz/student/quiz/{quiz_id}/questions/', headers=headers)
         print(f"Status: {response.status_code}")
         questions_response = response.json()
-        print(f"Response: {json.dumps(questions_response, indent=2)}")
+        print(f"Response: {json.dumps(questions_rtaesponse, indent=2)}")
         
         # Submit an answer for the first question
         if response.status_code == 200 and questions_response:

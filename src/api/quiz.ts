@@ -62,6 +62,28 @@ export const getFacultyQuizzes = async () => {
   return response.data;
 };
 
+export const getQuizById = async (quizId: string) => {
+  const token = localStorage.getItem('access_token');
+  if (!token) {
+    throw new Error('No authentication token found');
+  }
+  const response = await axios.get(`${API_URL}/quiz/quiz/${quizId}/`, {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+  return response.data;
+};
+
+export const updateQuiz = async (quizId: string, quizData: CreateQuizData) => {
+  const token = localStorage.getItem('access_token');
+  if (!token) {
+    throw new Error('No authentication token found');
+  }
+  const response = await axios.put(`${API_URL}/quiz/quiz/${quizId}/`, quizData, {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+  return response.data;
+};
+
 export const getFacultyQuizResults = async (quizId: string) => {
   const token = localStorage.getItem('access_token');
   if (!token) {

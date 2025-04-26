@@ -7,6 +7,7 @@ import ForgotPassword from './pages/ForgotPassword';
 import StudentDashboard from './pages/StudentDashboard';
 import FacultyDashboard from './pages/FacultyDashboard';
 import CreateQuiz from './pages/CreateQuiz';
+import EditQuiz from './pages/EditQuiz';
 
 function AppContent() {
   const location = useLocation();
@@ -22,6 +23,7 @@ function AppContent() {
         <Route path="/student-dashboard" element={<StudentDashboard />} />
         <Route path="/faculty-dashboard" element={<FacultyDashboard />} />
         <Route path="/create-quiz" element={<CreateQuiz />} />
+        <Route path="/edit-quiz/:quizId" element={<EditQuiz />} />
       </Routes>
     </div>
   );

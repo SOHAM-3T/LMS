@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { BookOpen, Users, Clock, User, Mail, Award, Search, LogOut, ChevronDown, Plus } from 'lucide-react';
+import { BookOpen, Users, Clock, User, Mail, Award, Search, LogOut, ChevronDown, Plus, Pencil } from 'lucide-react';
 import { getFacultyDetails, getAllStudents } from '../api';
 import { getFacultyQuizzes } from '../api/quiz';
 
@@ -251,6 +251,13 @@ const FacultyDashboard = () => {
                           }}
                         ></div>
                       </div>
+                      <button 
+                        className="p-2 rounded-full hover:bg-blue-200 transition-colors"
+                        title="Edit Quiz"
+                        onClick={() => navigate(`/edit-quiz/${quiz.id}`)}
+                      >
+                        <Pencil className="h-5 w-5 text-blue-600" />
+                      </button>
                     </div>
                   </div>
                 ))}
