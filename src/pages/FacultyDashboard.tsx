@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { BookOpen, Users, Clock, User, Mail, Award, Search, LogOut, ChevronDown, Plus } from 'lucide-react';
 import { getFacultyDetails, getAllStudents } from '../api';
-import { createQuiz, getFacultyQuizzes } from '../api/quiz';
+import { getFacultyQuizzes } from '../api/quiz';
 
 interface FacultyDetails {
   username: string;
@@ -38,7 +38,6 @@ interface Quiz {
 
 const FacultyDashboard = () => {
   const [showDropdown, setShowDropdown] = useState(false);
-  const [showCreateQuizModal, setShowCreateQuizModal] = useState(false);
   const navigate = useNavigate();
   const [facultyDetails, setFacultyDetails] = useState<FacultyDetails | null>(null);
   const [students, setStudents] = useState<Student[]>([]);
@@ -46,15 +45,6 @@ const FacultyDashboard = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
-  const [newQuiz, setNewQuiz] = useState({
-    title: '',
-    course_id: '',
-    topic: '',
-    difficulty: 'medium',
-    questions_per_student: 3,
-    questions: [] as string[]
-  });
-  const [currentQuestion, setCurrentQuestion] = useState('');
 
   useEffect(() => {
     const fetchData = async () => {
@@ -102,53 +92,6 @@ const FacultyDashboard = () => {
 
     fetchData();
   }, [navigate]);
-
-  const handleCreateQuiz = async (e: React.FormEvent) => {
-    e.preventDefault();
-    try {
-      if (newQuiz.questions.length < newQuiz.questions_per_student) {
-        setError(`Please add at least ${newQuiz.questions_per_student} questions`);
-        return;
-      }
-      const response = await createQuiz(newQuiz);
-      // Add the new quiz to the state with proper date formatting
-      setQuizzes([{
-        ...response,
-        created_at: new Date(response.created_at).toISOString()
-      }, ...quizzes]);
-      setShowCreateQuizModal(false);
-      setNewQuiz({
-        title: '',
-        course_id: '',
-        topic: '',
-        difficulty: 'medium',
-        questions_per_student: 3,
-        questions: [] as string[]
-      });
-      setCurrentQuestion('');
-      setError(null); // Clear any existing errors
-    } catch (err: any) {
-      console.error('Error creating quiz:', err);
-      setError(err.message || 'Failed to create quiz. Please try again.');
-    }
-  };
-
-  const handleAddQuestion = () => {
-    if (currentQuestion.trim()) {
-      setNewQuiz({
-        ...newQuiz,
-        questions: [...newQuiz.questions, currentQuestion.trim()]
-      });
-      setCurrentQuestion('');
-    }
-  };
-
-  const handleRemoveQuestion = (index: number) => {
-    setNewQuiz({
-      ...newQuiz,
-      questions: newQuiz.questions.filter((_, i) => i !== index)
-    });
-  };
 
   const filteredStudents = students.filter(student => 
     student.username.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -264,7 +207,7 @@ const FacultyDashboard = () => {
               <div className="flex items-center justify-between mb-6">
                 <h2 className="text-xl font-semibold text-gray-900">Quiz Management</h2>
                 <button 
-                  onClick={() => setShowCreateQuizModal(true)}
+                  onClick={() => navigate('/create-quiz')}
                   className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center space-x-2"
                 >
                   <Plus className="h-5 w-5" />
@@ -468,129 +411,8 @@ const FacultyDashboard = () => {
               </table>
             </div>
           </div>
-
-          {/* Create Quiz Modal */}
-          {showCreateQuizModal && (
-            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-              <div className="bg-white rounded-lg p-8 max-w-md w-full">
-                <h2 className="text-2xl font-bold mb-6">Create New Quiz</h2>
-                <form onSubmit={handleCreateQuiz}>
-                  <div className="space-y-4">
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700">Title</label>
-                      <input
-                        type="text"
-                        value={newQuiz.title}
-                        onChange={(e) => setNewQuiz({ ...newQuiz, title: e.target.value })}
-                        className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-                        required
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700">Course ID</label>
-                      <input
-                        type="text"
-                        value={newQuiz.course_id}
-                        onChange={(e) => setNewQuiz({ ...newQuiz, course_id: e.target.value })}
-                        className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-                        required
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700">Topic</label>
-                      <input
-                        type="text"
-                        value={newQuiz.topic}
-                        onChange={(e) => setNewQuiz({ ...newQuiz, topic: e.target.value })}
-                        className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-                        required
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700">Difficulty</label>
-                      <select
-                        value={newQuiz.difficulty}
-                        onChange={(e) => setNewQuiz({ ...newQuiz, difficulty: e.target.value })}
-                        className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-                      >
-                        <option value="easy">Easy</option>
-                        <option value="medium">Medium</option>
-                        <option value="hard">Hard</option>
-                      </select>
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700">Questions per Student</label>
-                      <input
-                        type="number"
-                        value={newQuiz.questions_per_student}
-                        onChange={(e) => setNewQuiz({ ...newQuiz, questions_per_student: parseInt(e.target.value) })}
-                        className="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-                        min="1"
-                        max="10"
-                        required
-                      />
-                    </div>
-                    <div>
-                      <label className="block text-sm font-medium text-gray-700">Questions</label>
-                      <div className="mt-1 space-y-2">
-                        <div className="flex gap-2">
-                          <input
-                            type="text"
-                            value={currentQuestion}
-                            onChange={(e) => setCurrentQuestion(e.target.value)}
-                            placeholder="Enter a question"
-                            className="flex-1 rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-                          />
-                          <button
-                            type="button"
-                            onClick={handleAddQuestion}
-                            className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700"
-                          >
-                            Add
-                          </button>
-                        </div>
-                        <div className="space-y-2">
-                          {newQuiz.questions.map((question, index) => (
-                            <div key={index} className="flex items-center gap-2 bg-gray-50 p-2 rounded">
-                              <span className="flex-1">{question}</span>
-                              <button
-                                type="button"
-                                onClick={() => handleRemoveQuestion(index)}
-                                className="text-red-600 hover:text-red-700"
-                              >
-                                Remove
-                              </button>
-                            </div>
-                          ))}
-                        </div>
-                        <p className="text-sm text-gray-500">
-                          Added {newQuiz.questions.length} questions. Need at least {newQuiz.questions_per_student}.
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="mt-6 flex justify-end space-x-3">
-                    <button
-                      type="button"
-                      onClick={() => setShowCreateQuizModal(false)}
-                      className="px-4 py-2 border border-gray-300 rounded-md text-gray-700 hover:bg-gray-50"
-                    >
-                      Cancel
-                    </button>
-                    <button
-                      type="submit"
-                      className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
-                    >
-                      Create Quiz
-                    </button>
-                  </div>
-                </form>
-              </div>
-            </div>
-          )}
         </div>
       </div>
-
     </div>
   );
 }

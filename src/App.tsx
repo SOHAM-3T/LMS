@@ -6,6 +6,7 @@ import Signup from './pages/Signup';
 import ForgotPassword from './pages/ForgotPassword';
 import StudentDashboard from './pages/StudentDashboard';
 import FacultyDashboard from './pages/FacultyDashboard';
+import CreateQuiz from './pages/CreateQuiz';
 
 function AppContent() {
   const location = useLocation();
@@ -20,6 +21,7 @@ function AppContent() {
         <Route path="/forgot-password" element={<ForgotPassword />} />
         <Route path="/student-dashboard" element={<StudentDashboard />} />
         <Route path="/faculty-dashboard" element={<FacultyDashboard />} />
+        <Route path="/create-quiz" element={<CreateQuiz />} />
       </Routes>
     </div>
   );
