@@ -67,7 +67,22 @@ def test_faculty_endpoints(token):
         response = requests.get(f'{BASE_URL}/quiz/quiz/{quiz_id}/results/', headers=headers)
         print(f"Status: {response.status_code}")
         print(f"Response: {json.dumps(response.json(), indent=2)}")
-    
+
+    # Delete the quiz (faculty only, should succeed)
+    if 'id' in created_quiz:
+        quiz_id = created_quiz['id']
+        print_separator()
+        print(f"4. Deleting quiz {quiz_id}...")
+        response = requests.delete(f'{BASE_URL}/quiz/quiz/{quiz_id}/delete/', headers=headers)
+        print(f"Status: {response.status_code}")
+        print(f"Response: {json.dumps(response.json(), indent=2)}")
+        # Try to fetch the quiz again (should be 404)
+        print_separator()
+        print(f"5. Verifying quiz {quiz_id} was deleted...")
+        response = requests.get(f'{BASE_URL}/quiz/quiz/{quiz_id}/', headers=headers)
+        print(f"Status: {response.status_code}")
+        print(f"Response: {json.dumps(response.json(), indent=2)}")
+
 def test_student_endpoints(token):
     headers = {'Authorization': f'Bearer {token}'}
     
@@ -89,7 +104,7 @@ def test_student_endpoints(token):
         response = requests.get(f'{BASE_URL}/quiz/student/quiz/{quiz_id}/questions/', headers=headers)
         print(f"Status: {response.status_code}")
         questions_response = response.json()
-        print(f"Response: {json.dumps(questions_rtaesponse, indent=2)}")
+        print(f"Response: {json.dumps(questions_response, indent=2)}")
         
         # Submit an answer for the first question
         if response.status_code == 200 and questions_response:

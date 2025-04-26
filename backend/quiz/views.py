@@ -15,6 +15,22 @@ logger = logging.getLogger(__name__)
 
 # Create your views here.
 
+@api_view(['DELETE'])
+@permission_classes([IsAuthenticated])
+def delete_quiz(request, quiz_id):
+    """Delete a quiz (faculty only, only by creator)"""
+    try:
+        quiz = Quiz.objects.get(id=quiz_id)
+        if not request.user.is_faculty or quiz.created_by.id != request.user.id:
+            return Response({"error": "You can only delete quizzes you created."}, status=status.HTTP_403_FORBIDDEN)
+        quiz.delete()
+        return Response({"success": True, "message": "Quiz deleted."})
+    except Quiz.DoesNotExist:
+        return Response({"error": "Quiz not found"}, status=status.HTTP_404_NOT_FOUND)
+    except Exception as e:
+        logger.error(f"Error deleting quiz: {str(e)}")
+        return Response({"error": "Failed to delete quiz. Please try again."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 def create_quiz(request):

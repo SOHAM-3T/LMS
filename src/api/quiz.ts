@@ -95,6 +95,17 @@ export const getFacultyQuizResults = async (quizId: string) => {
   return response.data;
 };
 
+export const deleteQuiz = async (quizId: string) => {
+  const token = localStorage.getItem('access_token');
+  if (!token) {
+    throw new Error('No authentication token found');
+  }
+  const response = await axios.delete(`${API_URL}/quiz/quiz/${quizId}/delete/`, {
+    headers: { Authorization: `Bearer ${token}` }
+  });
+  return response.data;
+};
+
 // Student Quiz APIs
 export const getStudentQuizzes = async () => {
   const token = localStorage.getItem('access_token');

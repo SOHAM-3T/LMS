@@ -2,7 +2,7 @@ import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { BookOpen, Users, Clock, User, Mail, Award, Search, LogOut, ChevronDown, Plus, Pencil } from 'lucide-react';
 import { getFacultyDetails, getAllStudents } from '../api';
-import { getFacultyQuizzes } from '../api/quiz';
+import { getFacultyQuizzes, deleteQuiz } from '../api/quiz';
 
 interface FacultyDetails {
   username: string;
@@ -99,6 +99,16 @@ const FacultyDashboard = () => {
     student.last_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     student.email.toLowerCase().includes(searchTerm.toLowerCase())
   );
+
+  const handleDeleteQuiz = async (quizId: string) => {
+    if (!window.confirm('Are you sure you want to delete this quiz? This action cannot be undone.')) return;
+    try {
+      await deleteQuiz(quizId);
+      setQuizzes((prev) => prev.filter((q) => q.id !== quizId));
+    } catch (err: any) {
+      alert(err.response?.data?.error || 'Failed to delete quiz.');
+    }
+  };
 
   if (isLoading) {
     return (
@@ -257,6 +267,15 @@ const FacultyDashboard = () => {
                         onClick={() => navigate(`/edit-quiz/${quiz.id}`)}
                       >
                         <Pencil className="h-5 w-5 text-blue-600" />
+                      </button>
+                      <button
+                        className="p-2 rounded-full hover:bg-red-200 transition-colors"
+                        title="Delete Quiz"
+                        onClick={() => handleDeleteQuiz(quiz.id)}
+                      >
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" className="h-5 w-5 text-red-600">
+                          <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
                       </button>
                     </div>
                   </div>
