@@ -45,6 +45,7 @@ const FacultyDashboard = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState('');
+  const [quizSearchTerm, setQuizSearchTerm] = useState('');
 
   useEffect(() => {
     const fetchData = async () => {
@@ -98,6 +99,13 @@ const FacultyDashboard = () => {
     student.first_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     student.last_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     student.email.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  const filteredQuizzes = quizzes.filter(quiz =>
+    quiz.title.toLowerCase().includes(quizSearchTerm.toLowerCase()) ||
+    quiz.course_id.toLowerCase().includes(quizSearchTerm.toLowerCase()) ||
+    quiz.topic.toLowerCase().includes(quizSearchTerm.toLowerCase()) ||
+    quiz.difficulty.toLowerCase().includes(quizSearchTerm.toLowerCase())
   );
 
   const handleDeleteQuiz = async (quizId: string) => {
@@ -224,8 +232,20 @@ const FacultyDashboard = () => {
                   <span>Create Quiz</span>
                 </button>
               </div>
+              <div className="mb-4 flex items-center gap-2">
+                <div className="relative w-full max-w-xs">
+                  <input
+                    type="text"
+                    placeholder="Search quizzes (title, course, topic, difficulty)"
+                    value={quizSearchTerm}
+                    onChange={e => setQuizSearchTerm(e.target.value)}
+                    className="w-full pl-10 pr-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  />
+                  <Search className="absolute left-3 top-2.5 h-4 w-4 text-gray-400 pointer-events-none" />
+                </div>
+              </div>
               <div className="space-y-4">
-                {quizzes.map((quiz) => (
+                {filteredQuizzes.map((quiz) => (
                   <div key={quiz.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors duration-200">
                     <div className="flex items-center space-x-4">
                       <div className="p-2 bg-blue-100 rounded-lg">
@@ -280,9 +300,9 @@ const FacultyDashboard = () => {
                     </div>
                   </div>
                 ))}
-                {quizzes.length === 0 && (
+                {filteredQuizzes.length === 0 && (
                   <div className="text-center py-8 text-gray-500">
-                    No quizzes created yet. Click "Create Quiz" to get started.
+                    No quizzes found.
                   </div>
                 )}
               </div>
