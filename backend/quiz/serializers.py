@@ -75,7 +75,7 @@ class QuizSerializer(serializers.ModelSerializer):
         instance.save()
         if questions_data is not None:
             # Remove old questions and add new ones
-            instance.question_set.all().delete()
+            instance.questions.all().delete()
             for question_data in questions_data:
                 question_data.setdefault('topic', instance.topic)
                 question_data.setdefault('difficulty', instance.difficulty)

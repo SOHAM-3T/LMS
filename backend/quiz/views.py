@@ -46,6 +46,16 @@ def create_quiz(request):
             User = get_user_model()
             students = User.objects.filter(is_student=True, is_active=True)
             questions_data = serializer.data.get('questions', [])
+            # Assign questions to students (fixes 0/0 completed issue)
+            questions = list(quiz.questions.all())
+            assignments = []
+            import random
+            for student in students:
+                random.shuffle(questions)
+                assigned_questions = questions[:quiz.questions_per_student]
+                for question in assigned_questions:
+                    assignments.append(QuizAssignment(quiz=quiz, student=student, question=question))
+            QuizAssignment.objects.bulk_create(assignments)
             return Response({
                 'id': quiz.id,
                 'title': quiz.title,
