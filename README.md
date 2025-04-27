@@ -15,7 +15,7 @@ A powerful Learning Management System (LMS) backend built using Django and Postg
   - ✅ Generate randomized quizzes
   - ⏳ View student performance and results (in progress)
 - ✅ Student capabilities:
-  - ✅ Attempt personalized quizzes (in progress)
+  - ✅ Attempt personalized quizzes
   - ⏳ View quiz results (in progress)
 - ✅ Admin panel support for superusers
 
