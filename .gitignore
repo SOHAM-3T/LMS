@@ -24,3 +24,6 @@ dist-ssr
 *.sw?
 .env
 cred.env
+__pycache__/
+*.pyc
+
