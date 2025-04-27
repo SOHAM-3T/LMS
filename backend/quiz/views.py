@@ -175,9 +175,13 @@ def get_quiz_questions(request, quiz_id):
         
         questions = []
         for assignment in assignments:
+            question = assignment.question
             questions.append({
                 'assignment_id': assignment.id,
-                'question_text': assignment.question.text,
+                'question_text': question.text,
+                'type': question.type,
+                'options': question.options,
+                'image': question.image.url if question.image else None,
                 'is_completed': assignment.completed,
                 'student_answer': assignment.student_answer if assignment.completed else None,
                 'score': assignment.score if assignment.completed else None

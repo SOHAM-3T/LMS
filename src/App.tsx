@@ -1,4 +1,6 @@
 import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import Navbar from './components/Navbar';
 import Home from './pages/Home';
 import Login from './pages/Login';
@@ -8,13 +10,59 @@ import StudentDashboard from './pages/StudentDashboard';
 import FacultyDashboard from './pages/FacultyDashboard';
 import CreateQuiz from './pages/CreateQuiz';
 import EditQuiz from './pages/EditQuiz';
+import TakeQuiz from './pages/TakeQuiz';
+import { SessionProvider } from './SessionContext';
 
 function AppContent() {
   const location = useLocation();
+  const navigate = useNavigate();
+  const [authChecked, setAuthChecked] = useState(false);
+  const [sessionExpired, setSessionExpired] = useState(false);
+
+  // Global auth check: redirect to login if tokens are missing
+  useEffect(() => {
+    const access = localStorage.getItem('access_token');
+    const refresh = localStorage.getItem('refresh_token');
+    const unprotected = ['/', '/login', '/signup', '/forgot-password'];
+    if (!unprotected.includes(location.pathname)) {
+      if (!access || !refresh) {
+        localStorage.removeItem('access_token');
+        localStorage.removeItem('refresh_token');
+        setSessionExpired(true);
+        setAuthChecked(false);
+        return;
+      }
+    }
+    setSessionExpired(false);
+    setAuthChecked(true);
+  }, [location]);
+
+  if (sessionExpired) {
+    return (
+      <div style={{minHeight: '100vh', display: 'flex', flexDirection: 'column', justifyContent: 'center', alignItems: 'center', background: '#f1f5f9'}}>
+        <div style={{background:'#fee2e2', color:'#b91c1c', borderRadius:8, padding:32, fontSize:'1.2rem', textAlign:'center'}}>
+          <p><b>Session expired</b></p>
+          <p>Your login session has expired. Please log in again.</p>
+          <button onClick={() => navigate('/login')} style={{marginTop:16, padding:'8px 20px', background:'#3b82f6', color:'#fff', border:'none', borderRadius:6, fontSize:'1rem', cursor:'pointer'}}>Go to Login</button>
+        </div>
+      </div>
+    );
+  }
+
+  // Only render children after auth check
+  if (!authChecked && !['/', '/login', '/signup', '/forgot-password'].includes(location.pathname)) {
+    return null; // or a spinner/loading UI
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50">
-      {!['/login', '/signup', '/forgot-password', '/create-quiz'].includes(location.pathname) && <Navbar />}
+      {![
+        '/login',
+        '/signup',
+        '/forgot-password',
+        '/create-quiz'
+      ].includes(location.pathname) &&
+      !/^\/student\/quiz\/[^/]+\/attempt$/.test(location.pathname) && <Navbar />}
       <Routes>
         <Route path="/" element={<Home />} />
         <Route path="/login" element={<Login />} />
@@ -24,6 +72,7 @@ function AppContent() {
         <Route path="/faculty-dashboard" element={<FacultyDashboard />} />
         <Route path="/create-quiz" element={<CreateQuiz />} />
         <Route path="/edit-quiz/:quizId" element={<EditQuiz />} />
+        <Route path="/student/quiz/:quizId/attempt" element={<TakeQuiz />} />
       </Routes>
     </div>
   );
@@ -31,9 +80,11 @@ function AppContent() {
 
 function App() {
   return (
-    <Router>
-      <AppContent />
-    </Router>
+    <SessionProvider>
+      <Router>
+        <AppContent />
+      </Router>
+    </SessionProvider>
   );
 }
 

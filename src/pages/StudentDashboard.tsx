@@ -103,7 +103,11 @@ const StudentDashboard = () => {
       } catch (err: any) {
         console.error('Error fetching student details:', err);
         setError(err.message);
-        if (err.message === 'Session expired. Please login again.' || err.message === 'No authentication token found') {
+        if (
+          err.message === 'Session expired. Please login again.' ||
+          err.message === 'No authentication token found' ||
+          err.message === 'SessionExpired'
+        ) {
           navigate('/login');
         }
       } finally {
@@ -149,6 +153,9 @@ const StudentDashboard = () => {
       // Clear any previous answers and errors
       setCurrentAnswer('');
       setError(null);
+
+      // Navigate to the quiz attempt page
+      navigate(`/student/quiz/${quiz.id}/attempt`);
     } catch (err: any) {
       console.error('Error fetching quiz questions:', err);
       setError(err.message);

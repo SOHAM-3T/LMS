@@ -1,4 +1,11 @@
 import axios from "axios";
+import { setSessionExpiredGlobal } from './SessionContext';
+
+// Truly global session expired variable
+let trulyGlobalSessionExpired = false;
+export function setTrulyGlobalSessionExpired(val: boolean) {
+  trulyGlobalSessionExpired = val;
+}
 
 // Create axios instance with base URL
 const api = axios.create({
@@ -8,45 +15,227 @@ const api = axios.create({
   },
 });
 
+export { api };
+
+// Add request interceptor to attach Authorization header and block all requests after session expiry
+api.interceptors.request.use(
+  (config) => {
+    console.log('[REQUEST] URL:', config.url, 'SessionExpired:', trulyGlobalSessionExpired, 'WindowExpired:', typeof window !== 'undefined' && (window as any).__SESSION_EXPIRED__);
+    if (trulyGlobalSessionExpired || (typeof window !== 'undefined' && (window as any).__SESSION_EXPIRED__)) {
+      return Promise.reject(new Error('SessionExpired'));
+    }
+    const token = localStorage.getItem('access_token');
+    if (token) {
+      config.headers = config.headers || {};
+      config.headers['Authorization'] = `Bearer ${token}`;
+    }
+    return config;
+  },
+  (error) => Promise.reject(error)
+);
+
 // Add response interceptor to handle token refresh
+let isRefreshing = false;
+let failedQueue: any[] = [];
+
+const processQueue = (error: any, token: string | null = null) => {
+  failedQueue.forEach(prom => {
+    if (error) {
+      prom.reject(error);
+    } else {
+      prom.resolve(token);
+    }
+  });
+  failedQueue = [];
+};
+
 api.interceptors.response.use(
   (response) => response,
   async (error) => {
+    console.log('[RESPONSE] Error for URL:', error.config?.url, 'Status:', error.response?.status, 'SessionExpired:', trulyGlobalSessionExpired, 'WindowExpired:', typeof window !== 'undefined' && (window as any).__SESSION_EXPIRED__);
+    if (trulyGlobalSessionExpired || (typeof window !== 'undefined' && (window as any).__SESSION_EXPIRED__)) {
+      setSessionExpiredGlobal?.(true);
+      throw new Error('SessionExpired');
+    }
     const originalRequest = error.config;
-
-    // If error is 401 and we haven't tried to refresh token yet
+    const refreshToken = localStorage.getItem('refreshToken') || localStorage.getItem('refresh_token');
     if (error.response?.status === 401 && !originalRequest._retry) {
-      originalRequest._retry = true;
-
-      try {
-        const refreshToken = localStorage.getItem('refresh_token');
-        if (!refreshToken) {
-          throw new Error('No refresh token found');
-        }
-
-        // Try to get a new access token
-        const response = await api.post('/auth/refresh-token/', {
-          refresh_token: refreshToken
-        });
-
-        const { access_token } = response.data;
-        localStorage.setItem('access_token', access_token);
-
-        // Retry the original request with new token
-        originalRequest.headers['Authorization'] = `Bearer ${access_token}`;
-        return api(originalRequest);
-      } catch (refreshError) {
-        // If refresh fails, redirect to login
+      if (!refreshToken) {
+        // No refresh token: log out and stop loop
+        trulyGlobalSessionExpired = true;
+        if (typeof window !== 'undefined') (window as any).__SESSION_EXPIRED__ = true;
         localStorage.removeItem('access_token');
         localStorage.removeItem('refresh_token');
+        localStorage.removeItem('refreshToken');
+        setTrulyGlobalSessionExpired(true);
+        setSessionExpiredGlobal?.(true);
+        processQueue(new Error('SessionExpired'), null);
+        console.log('[RESPONSE] Redirecting to login due to session expired (no refresh token)');
         window.location.href = '/login';
-        return Promise.reject(refreshError);
+        throw new Error('SessionExpired');
+      }
+      if (isRefreshing) {
+        return new Promise(function(resolve, reject) {
+          failedQueue.push({ resolve, reject });
+        })
+        .then((token) => {
+          originalRequest.headers['Authorization'] = 'Bearer ' + token;
+          return api(originalRequest);
+        })
+        .catch(() => {
+          trulyGlobalSessionExpired = true;
+          if (typeof window !== 'undefined') (window as any).__SESSION_EXPIRED__ = true;
+          setTrulyGlobalSessionExpired(true);
+          setSessionExpiredGlobal?.(true);
+          console.log('[RESPONSE] Redirecting to login due to session expired (refresh failed)');
+          window.location.href = '/login';
+          throw new Error('SessionExpired');
+        });
+      }
+      originalRequest._retry = true;
+      isRefreshing = true;
+      try {
+        const response = await axios.post('http://localhost:8000/auth/token/refresh/', {
+          refresh: refreshToken
+        });
+        const { access } = response.data;
+        localStorage.setItem('access_token', access);
+        api.defaults.headers.common['Authorization'] = 'Bearer ' + access;
+        processQueue(null, access);
+        return api(originalRequest);
+      } catch (refreshError) {
+        trulyGlobalSessionExpired = true;
+        if (typeof window !== 'undefined') (window as any).__SESSION_EXPIRED__ = true;
+        processQueue(refreshError, null);
+        localStorage.removeItem('access_token');
+        localStorage.removeItem('refresh_token');
+        localStorage.removeItem('refreshToken');
+        setTrulyGlobalSessionExpired(true);
+        setSessionExpiredGlobal?.(true);
+        console.log('[RESPONSE] Redirecting to login due to session expired (refresh failed)');
+        window.location.href = '/login';
+        throw new Error('SessionExpired');
+      } finally {
+        isRefreshing = false;
       }
     }
-
+    if (setSessionExpiredGlobal && setSessionExpiredGlobal.toString() !== '() => {}') {
+      // If session is expired, immediately reject
+      if (window.localStorage.getItem('access_token') === null && window.localStorage.getItem('refresh_token') === null) {
+        trulyGlobalSessionExpired = true;
+        if (typeof window !== 'undefined') (window as any).__SESSION_EXPIRED__ = true;
+        setTrulyGlobalSessionExpired(true);
+        setSessionExpiredGlobal(true);
+        console.log('[RESPONSE] Redirecting to login due to session expired (tokens missing)');
+        window.location.href = '/login';
+        throw new Error('SessionExpired');
+      }
+    }
     return Promise.reject(error);
   }
 );
+
+// --- GLOBAL PATCH: Add interceptors to default axios instance ---
+axios.interceptors.request.use(
+  (config) => {
+    console.log('[GLOBAL REQUEST] URL:', config.url, 'SessionExpired:', trulyGlobalSessionExpired, 'WindowExpired:', typeof window !== 'undefined' && (window as any).__SESSION_EXPIRED__);
+    if (trulyGlobalSessionExpired || (typeof window !== 'undefined' && (window as any).__SESSION_EXPIRED__)) {
+      return Promise.reject(new Error('SessionExpired'));
+    }
+    const token = localStorage.getItem('access_token');
+    if (token) {
+      config.headers = config.headers || {};
+      config.headers['Authorization'] = `Bearer ${token}`;
+    }
+    return config;
+  },
+  (error) => Promise.reject(error)
+);
+
+axios.interceptors.response.use(
+  (response) => response,
+  async (error) => {
+    console.log('[GLOBAL RESPONSE] Error for URL:', error.config?.url, 'Status:', error.response?.status, 'SessionExpired:', trulyGlobalSessionExpired, 'WindowExpired:', typeof window !== 'undefined' && (window as any).__SESSION_EXPIRED__);
+    if (trulyGlobalSessionExpired || (typeof window !== 'undefined' && (window as any).__SESSION_EXPIRED__)) {
+      setSessionExpiredGlobal?.(true);
+      throw new Error('SessionExpired');
+    }
+    const originalRequest = error.config;
+    const refreshToken = localStorage.getItem('refreshToken') || localStorage.getItem('refresh_token');
+    if (error.response?.status === 401 && !originalRequest._retry) {
+      if (!refreshToken) {
+        trulyGlobalSessionExpired = true;
+        if (typeof window !== 'undefined') (window as any).__SESSION_EXPIRED__ = true;
+        localStorage.removeItem('access_token');
+        localStorage.removeItem('refresh_token');
+        localStorage.removeItem('refreshToken');
+        setTrulyGlobalSessionExpired(true);
+        setSessionExpiredGlobal?.(true);
+        processQueue(new Error('SessionExpired'), null);
+        console.log('[GLOBAL RESPONSE] Redirecting to login due to session expired (no refresh token)');
+        window.location.href = '/login';
+        throw new Error('SessionExpired');
+      }
+      if (isRefreshing) {
+        return new Promise(function(resolve, reject) {
+          failedQueue.push({ resolve, reject });
+        })
+        .then((token) => {
+          originalRequest.headers['Authorization'] = 'Bearer ' + token;
+          return axios(originalRequest);
+        })
+        .catch(() => {
+          trulyGlobalSessionExpired = true;
+          if (typeof window !== 'undefined') (window as any).__SESSION_EXPIRED__ = true;
+          setTrulyGlobalSessionExpired(true);
+          setSessionExpiredGlobal?.(true);
+          console.log('[GLOBAL RESPONSE] Redirecting to login due to session expired (refresh failed)');
+          window.location.href = '/login';
+          throw new Error('SessionExpired');
+        });
+      }
+      originalRequest._retry = true;
+      isRefreshing = true;
+      try {
+        const response = await axios.post('http://localhost:8000/auth/token/refresh/', {
+          refresh: refreshToken
+        });
+        const { access } = response.data;
+        localStorage.setItem('access_token', access);
+        axios.defaults.headers.common['Authorization'] = 'Bearer ' + access;
+        processQueue(null, access);
+        return axios(originalRequest);
+      } catch (refreshError) {
+        trulyGlobalSessionExpired = true;
+        if (typeof window !== 'undefined') (window as any).__SESSION_EXPIRED__ = true;
+        processQueue(refreshError, null);
+        localStorage.removeItem('access_token');
+        localStorage.removeItem('refresh_token');
+        localStorage.removeItem('refreshToken');
+        setTrulyGlobalSessionExpired(true);
+        setSessionExpiredGlobal?.(true);
+        console.log('[GLOBAL RESPONSE] Redirecting to login due to session expired (refresh failed)');
+        window.location.href = '/login';
+        throw new Error('SessionExpired');
+      } finally {
+        isRefreshing = false;
+      }
+    }
+    if (setSessionExpiredGlobal && setSessionExpiredGlobal.toString() !== '() => {}') {
+      if (window.localStorage.getItem('access_token') === null && window.localStorage.getItem('refresh_token') === null) {
+        trulyGlobalSessionExpired = true;
+        if (typeof window !== 'undefined') (window as any).__SESSION_EXPIRED__ = true;
+        setTrulyGlobalSessionExpired(true);
+        setSessionExpiredGlobal(true);
+        console.log('[GLOBAL RESPONSE] Redirecting to login due to session expired (tokens missing)');
+        window.location.href = '/login';
+        throw new Error('SessionExpired');
+      }
+    }
+    return Promise.reject(error);
+  }
+);
+// --- END GLOBAL PATCH ---
 
 // Function to register a new user
 export const registerUser = async ({
@@ -170,11 +359,9 @@ export const getStudentDetails = async () => {
     return response.data;
   } catch (error: any) {
     if (error.response?.status === 401) {
-      // Token expired or invalid
       localStorage.removeItem('access_token');
       localStorage.removeItem('refresh_token');
-      window.location.href = '/login';
-      throw new Error('Session expired. Please login again.');
+      throw new Error('SessionExpired');
     }
     throw error.response?.data?.error || "Failed to fetch student details";
   }
@@ -196,11 +383,9 @@ export const getFacultyDetails = async () => {
     return response.data;
   } catch (error: any) {
     if (error.response?.status === 401) {
-      // Token expired or invalid
       localStorage.removeItem('access_token');
       localStorage.removeItem('refresh_token');
-      window.location.href = '/login';
-      throw new Error('Session expired. Please login again.');
+      throw new Error('SessionExpired');
     }
     throw error.response?.data?.error || "Failed to fetch faculty details";
   }
@@ -222,11 +407,9 @@ export const getAllStudents = async () => {
     return response.data;
   } catch (error: any) {
     if (error.response?.status === 401) {
-      // Token expired or invalid
       localStorage.removeItem('access_token');
       localStorage.removeItem('refresh_token');
-      window.location.href = '/login';
-      throw new Error('Session expired. Please login again.');
+      throw new Error('SessionExpired');
     }
     throw error.response?.data?.error || "Failed to fetch students";
   }

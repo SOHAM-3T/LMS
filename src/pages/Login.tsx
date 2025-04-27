@@ -59,6 +59,7 @@ const Login = () => {
       if (response.access && response.refresh) {
         localStorage.setItem('access_token', response.access);
         localStorage.setItem('refresh_token', response.refresh);
+        localStorage.setItem('refreshToken', response.refresh); // for compatibility with dashboard and refresh logic
         setSuccess('Login successful! Redirecting...');
         
         // Debug log for redirection

@@ -1,0 +1,123 @@
+/* TakeQuiz.css */
+.take-quiz-container {
+  max-width: 480px;
+  margin: 36px auto;
+  background: #fff;
+  border-radius: 12px;
+  box-shadow: 0 4px 24px rgba(0,0,0,0.10);
+  padding: 32px 24px 24px 24px;
+  font-family: 'Segoe UI', Arial, sans-serif;
+}
+.quiz-header {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-bottom: 18px;
+}
+.quiz-header h2 {
+  margin: 0 0 8px 0;
+  font-size: 1.6rem;
+  color: #2b2b2b;
+}
+.quiz-progress {
+  font-size: 1rem;
+  color: #666;
+  margin-bottom: 8px;
+}
+.quiz-card {
+  background: #f8f9fa;
+  border-radius: 8px;
+  padding: 20px 18px 24px 18px;
+  margin-bottom: 16px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+}
+.quiz-question-text {
+  font-size: 1.1rem;
+  font-weight: 500;
+  margin-bottom: 16px;
+  color: #222;
+}
+.quiz-question-image {
+  max-width: 100%;
+  border-radius: 6px;
+  margin-bottom: 12px;
+}
+.quiz-options {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.quiz-option {
+  font-size: 1rem;
+  color: #363636;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.quiz-answer-input {
+  width: 100%;
+  padding: 8px 10px;
+  font-size: 1rem;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+  margin-bottom: 8px;
+}
+.quiz-nav-buttons {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+}
+.quiz-btn {
+  padding: 8px 18px;
+  font-size: 1rem;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+.quiz-btn-primary {
+  background: #3b82f6;
+  color: #fff;
+}
+.quiz-btn-primary:hover {
+  background: #2563eb;
+}
+.quiz-btn-secondary {
+  background: #e5e7eb;
+  color: #222;
+}
+.quiz-btn-secondary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+.quiz-loading, .quiz-error, .quiz-success {
+  max-width: 400px;
+  margin: 60px auto;
+  text-align: center;
+  font-size: 1.1rem;
+  padding: 24px;
+  border-radius: 8px;
+}
+.quiz-loading {
+  background: #f1f5f9;
+  color: #1e293b;
+}
+.quiz-error {
+  background: #fee2e2;
+  color: #b91c1c;
+}
+.quiz-success {
+  background: #dcfce7;
+  color: #166534;
+}
+@media (max-width: 600px) {
+  .take-quiz-container {
+    padding: 12px;
+  }
+  .quiz-card {
+    padding: 12px 8px 16px 8px;
+  }
+  .quiz-header h2 {
+    font-size: 1.1rem;
+  }
+}
