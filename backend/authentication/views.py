@@ -299,6 +299,8 @@ class ResetPasswordView(APIView):
                           status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 class LoginView(APIView):
+    permission_classes = [AllowAny]
+    authentication_classes = []
     def post(self, request):
         roll_no = request.data.get('roll_no')
         password = request.data.get('password')
@@ -386,6 +388,8 @@ def get_branch_full_form(branch_code):
     return branch_mapping.get(branch_code, branch_code)
 
 class RefreshTokenView(APIView):
+    permission_classes = [AllowAny]
+    authentication_classes = []
     def post(self, request):
         try:
             refresh_token = request.data.get('refresh_token')
