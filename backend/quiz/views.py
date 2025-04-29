@@ -1,8 +1,9 @@
 from django.shortcuts import render
 from rest_framework import status
-from rest_framework.decorators import api_view, permission_classes
+from rest_framework.decorators import api_view, permission_classes, parser_classes
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
+from rest_framework.parsers import MultiPartParser, FormParser, JSONParser
 from django.db import connection, transaction
 from django.contrib.auth import get_user_model
 from .models import Quiz, QuizAssignment, Question
@@ -34,6 +35,7 @@ def delete_quiz(request, quiz_id):
         return Response({"error": "Failed to delete quiz. Please try again."}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 @api_view(['POST'])
+@parser_classes([MultiPartParser, FormParser, JSONParser])
 @permission_classes([IsAuthenticated])
 def create_quiz(request):
     try:
@@ -176,12 +178,20 @@ def get_quiz_questions(request, quiz_id):
         questions = []
         for assignment in assignments:
             question = assignment.question
+            image_url = None
+            if question.image:
+                try:
+                    image_url = request.build_absolute_uri(question.image.url)
+                    logger.info(f"Image URL for question {question.id}: {image_url}")
+                except Exception as e:
+                    logger.error(f"Error building image URL for question {question.id}: {str(e)}")
+            
             questions.append({
                 'assignment_id': assignment.id,
                 'question_text': question.text,
                 'type': question.type,
                 'options': question.options,
-                'image': question.image.url if question.image else None,
+                'image': image_url,
                 'is_completed': assignment.completed,
                 'student_answer': assignment.student_answer if assignment.completed else None,
                 'score': assignment.score if assignment.completed else None

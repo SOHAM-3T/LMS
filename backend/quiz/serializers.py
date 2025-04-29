@@ -52,18 +52,29 @@ class QuizSerializer(serializers.ModelSerializer):
         return ret
 
     def create(self, validated_data):
+        """
+        Create a quiz along with nested questions, attaching uploaded images.
+        """
         questions_data = validated_data.pop('questions', [])
-        user = self.context['request'].user if 'request' in self.context else None
-        validated_data['created_by'] = user
-        quiz = Quiz.objects.create(**validated_data)
-        for question_data in questions_data:
+        user = self.context['request'].user
+        # Create the quiz instance
+        quiz = Quiz.objects.create(created_by=user, **validated_data)
+        # Retrieve uploaded images for questions
+        images = self.context['request'].FILES.getlist('images')
+        # Create each question with its corresponding image
+        for idx, question_data in enumerate(questions_data):
             question_data.setdefault('topic', quiz.topic)
             question_data.setdefault('difficulty', quiz.difficulty)
             question_data.pop('quiz', None)
-            try:
-                Question.objects.create(quiz=quiz, created_by=user, **question_data)
-            except Exception as e:
-                pass
+            # Avoid duplicate image kwarg if present in question_data
+            question_data.pop('image', None)
+            image = images[idx] if idx < len(images) else None
+            Question.objects.create(
+                quiz=quiz,
+                created_by=user,
+                image=image,
+                **question_data
+            )
         return quiz
 
     def update(self, instance, validated_data):

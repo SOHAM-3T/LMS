@@ -60,8 +60,21 @@ export const createQuiz = async (quizData: CreateQuizData) => {
   formData.append('topic', quizData.topic);
   formData.append('difficulty', quizData.difficulty);
   formData.append('questions_per_student', quizData.questions_per_student.toString());
-  // Pass questions as a JSON string
-  formData.append('questions', JSON.stringify(quizData.questions));
+  
+  // Handle questions and their images
+  const questionsWithoutImages = quizData.questions.map(q => ({
+    ...q,
+    image: null // Remove image from JSON to avoid circular reference
+  }));
+  formData.append('questions', JSON.stringify(questionsWithoutImages));
+  
+  // Append each image separately
+  quizData.questions.forEach((question) => {
+    if (question.image instanceof File) {
+      formData.append('images', question.image);
+    }
+  });
+
   const response = await axios.post(`${API_URL}/quiz/create/`, formData, {
     headers: {
       Authorization: `Bearer ${token}`,
@@ -105,7 +118,21 @@ export const updateQuiz = async (quizId: string, quizData: CreateQuizData) => {
   formData.append('topic', quizData.topic);
   formData.append('difficulty', quizData.difficulty);
   formData.append('questions_per_student', quizData.questions_per_student.toString());
-  formData.append('questions', JSON.stringify(quizData.questions));
+  
+  // Handle questions and their images
+  const questionsWithoutImages = quizData.questions.map(q => ({
+    ...q,
+    image: null // Remove image from JSON to avoid circular reference
+  }));
+  formData.append('questions', JSON.stringify(questionsWithoutImages));
+  
+  // Append each image separately
+  quizData.questions.forEach((question) => {
+    if (question.image instanceof File) {
+      formData.append('images', question.image);
+    }
+  });
+
   const response = await axios.put(`${API_URL}/quiz/quiz/${quizId}/`, formData, {
     headers: {
       Authorization: `Bearer ${token}`,

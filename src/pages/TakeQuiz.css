@@ -37,10 +37,20 @@
   margin-bottom: 16px;
   color: #222;
 }
+.quiz-image-container {
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  margin: 1rem 0;
+  padding: 1rem;
+  background-color: #f8f9fa;
+  border-radius: 0.5rem;
+}
 .quiz-question-image {
   max-width: 100%;
-  border-radius: 6px;
-  margin-bottom: 12px;
+  height: auto;
+  border-radius: 0.25rem;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 .quiz-options {
   display: flex;

@@ -18,6 +18,8 @@ Including another URLconf
 from django.contrib import admin
 from django.urls import path, include
 from django.http import JsonResponse
+from django.conf import settings
+from django.conf.urls.static import static
 
 def home(request):
     return JsonResponse({"message": "Welcome to the LMS Backend API"}, status=200)
@@ -28,3 +30,8 @@ urlpatterns = [
     path("quiz/", include("quiz.urls")),  # Add quiz URLs
     path("", home, name="home"),  # Add a home route
 ]
+
+# Serve media files in development
+if settings.DEBUG:
+    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+    print(f"Media files will be served from {settings.MEDIA_ROOT} at URL {settings.MEDIA_URL}")

@@ -45,7 +45,9 @@ const TakeQuiz: React.FC = () => {
         // Fetch questions as before
         const response = await axios.get(`http://127.0.0.1:8000/quiz/student/quiz/${quizId}/questions/`);
         const data = response.data;
+        console.log('Quiz questions response:', data); // Debug log
         if (Array.isArray(data)) {
+          console.log('Question images:', data.map(q => q.image)); // Debug image URLs
           setQuiz({
             id: Number(quizId),
             title,
@@ -57,6 +59,7 @@ const TakeQuiz: React.FC = () => {
           setQuiz(null);
         }
       } catch (err: any) {
+        console.error('Error fetching quiz:', err); // Debug error
         if (err?.message === 'SessionExpired') {
           setError('Your session has expired. Please log in again.');
           setLoading(false);
@@ -198,7 +201,21 @@ const TakeQuiz: React.FC = () => {
               <div className="quiz-review-question">
                 <strong>Q{idx + 1}:</strong> {q.question_text}
               </div>
-              {q.image && <img src={q.image} alt="question" className="quiz-question-image" />}
+              {q.image && (
+                <div className="quiz-image-container">
+                  <img 
+                    src={q.image}
+                    alt="Question" 
+                    className="quiz-question-image"
+                    style={{ maxWidth: '100%', height: 'auto', marginTop: '1rem', marginBottom: '1rem' }}
+                    onError={(e) => {
+                      console.error('Image failed to load:', q.image);
+                      const target = e.target as HTMLImageElement;
+                      target.style.display = 'none';
+                    }}
+                  />
+                </div>
+              )}
               <div className="quiz-review-answer">
                 <span>Your Answer:</span> {answers[q.assignment_id] || <span style={{color:'#b91c1c'}}>No answer</span>}
               </div>
@@ -235,7 +252,21 @@ const TakeQuiz: React.FC = () => {
       >
         <div className="quiz-card">
           <div className="quiz-question-text">{q.question_text}</div>
-          {q.image && <img src={q.image} alt="question" className="quiz-question-image" />}
+          {q.image && (
+            <div className="quiz-image-container">
+              <img 
+                src={q.image} 
+                alt="Question" 
+                className="quiz-question-image"
+                style={{ maxWidth: '100%', height: 'auto', marginTop: '1rem', marginBottom: '1rem' }}
+                onError={(e) => {
+                  console.error('Image failed to load:', q.image);
+                  const target = e.target as HTMLImageElement;
+                  target.style.display = 'none';
+                }}
+              />
+            </div>
+          )}
           {/* Render based on question type */}
           {q.type === 'mcq' && q.options ? (
             <div className="quiz-options">
