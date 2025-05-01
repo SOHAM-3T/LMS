@@ -1,4 +1,4 @@
-# 📚 Project BOLT - Learning Management System
+# 📚 Project LMS - Learning Management System
 
 A modern Learning Management System (LMS) built with Django backend and React frontend, featuring role-based access control, real-time quiz performance tracking, and a beautiful UI powered by Tailwind CSS.
 
