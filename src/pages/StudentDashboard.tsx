@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Clock, Award, ChevronRight, User, Mail, LogOut, ChevronDown } from 'lucide-react';
+import { Clock, Award, User, Mail, LogOut, ChevronDown } from 'lucide-react';
 import { getStudentDetails } from '../api';
-import { getStudentQuizzes, getStudentQuizQuestions, submitQuizAnswer } from '../api/quiz';
+import { getStudentQuizzes, submitQuizAnswer, QuestionData } from '../api/quiz';
+import { API_BASE_URL } from '../config';
 
 interface StudentDetails {
   id: number;
@@ -18,18 +19,27 @@ interface StudentDetails {
 }
 
 interface Quiz {
-  id: string;
+  id: number;
   title: string;
   course_id: string;
   topic: string;
   difficulty: string;
-  created_at: string;
-  completed?: boolean;
-  inProgress: boolean;
-  score?: number;
   is_completed?: boolean;
-  completed_questions?: number;
+  total_score?: number;
+  max_possible_score?: number;
+  rank?: number;
+  percentile?: number;
+  score?: number;
   total_questions?: number;
+  completed_questions?: number;
+  completed?: boolean;
+  inProgress?: boolean;
+  questions?: QuestionData[];
+  scheduled_start_time?: string | null;
+  scheduled_end_time?: string | null;
+  time_limit_minutes?: number | null;
+  is_scheduled?: boolean;
+  questions_per_student?: number;
 }
 
 interface QuizQuestion {
@@ -41,6 +51,16 @@ interface QuizQuestion {
   score?: number;
 }
 
+interface QuizPerformanceData {
+  quizId: number;
+  quizTitle: string;
+  rank: number | null;
+  percentile: number | null;
+  score: string;
+  maxScore: string;
+  courseId: string;
+}
+
 const StudentDashboard = () => {
   const [showDropdown, setShowDropdown] = useState(false);
   const navigate = useNavigate();
@@ -50,6 +70,7 @@ const StudentDashboard = () => {
   const [currentAnswer, setCurrentAnswer] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [quizPerformances, setQuizPerformances] = useState<QuizPerformanceData[]>([]);
 
   useEffect(() => {
     const checkUserType = async () => {
@@ -94,9 +115,10 @@ const StudentDashboard = () => {
         }
 
         if (quizData) {
-          setQuizzes(quizData.map((quiz: Quiz) => ({
+          setQuizzes(quizData.map((quiz: any) => ({
             ...quiz,
-            completed: quiz.is_completed,
+            id: String(quiz.id),
+            completed: quiz.is_completed || false,
             inProgress: false
           })));
         }
@@ -118,57 +140,52 @@ const StudentDashboard = () => {
     checkUserType();
   }, [navigate]);
 
-  const handleQuizClick = async (quiz: Quiz) => {
-    try {
-      // Check if quiz is already completed
-      if (quiz.completed) {
-        setError("This quiz has already been completed.");
-        return;
-      }
+  useEffect(() => {
+    const fetchQuizPerformances = async () => {
+      const completedQuizzes = quizzes.filter(quiz => quiz.completed);
       
-      // Get the questions and update the quiz status
-      const questions = await getStudentQuizQuestions(quiz.id);
-      console.log('Quiz Questions Response:', questions); // Debug log
-      
-      // Transform questions to ensure we have the question text
-      const transformedQuestions = questions.map((q: any) => ({
-        id: q.id,
-        quiz_id: q.quiz_id,
-        assignment_id: q.assignment_id,
-        text: q.question || q.text || q.question_text || 'Question text not available',
-        submitted: q.submitted || false,
-        score: q.score
-      }));
-      
-      // Update the quiz in the quizzes list as in-progress
-      setQuizzes(quizzes.map(q => 
-        q.id === quiz.id 
-          ? { ...q, inProgress: true }
-          : { ...q, inProgress: false }  // Set other quizzes to not in-progress
-      ));
-      
-      // Set the questions for this quiz
-      setQuizQuestions(transformedQuestions);
+      const performancePromises = completedQuizzes.map(async quiz => {
+        try {
+          const response = await fetch(`${API_BASE_URL}/quiz/student/performance/${quiz.id}/`, {
+            headers: {
+              'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
+              'Content-Type': 'application/json'
+            }
+          });
+          
+          const data = await response.json();
+          
+          return {
+            quizId: quiz.id,
+            quizTitle: quiz.title,
+            rank: data.rank || null,
+            percentile: data.percentile || null,
+            score: data.total_score || '0.00',
+            maxScore: data.max_possible_score || '0.00',
+            courseId: quiz.course_id
+          };
+        } catch (error) {
+          console.error(`Error fetching performance for quiz ${quiz.id}:`, error);
+          return null;
+        }
+      });
 
-      // Clear any previous answers and errors
-      setCurrentAnswer('');
-      setError(null);
+      const performances = (await Promise.all(performancePromises)).filter(p => p !== null) as QuizPerformanceData[];
+      setQuizPerformances(performances);
+    };
 
-      // Navigate to the quiz attempt page
-      navigate(`/student/quiz/${quiz.id}/attempt`);
-    } catch (err: any) {
-      console.error('Error fetching quiz questions:', err);
-      setError(err.message);
+    if (quizzes.length > 0) {
+      fetchQuizPerformances();
     }
+  }, [quizzes]);
+
+  const handleQuizClick = (quizId: number) => {
+    navigate(`/student/quiz/${quizId.toString()}/attempt`);
   };
 
   const handleAnswerSubmit = async (assignmentId: string, quizId: string) => {
     try {
-      if (!currentAnswer.trim()) {
-        setError("Please provide an answer before submitting.");
-        return;
-      }
-
+      // Submit the answer
       await submitQuizAnswer(assignmentId, currentAnswer);
       
       // Update the question status
@@ -189,7 +206,7 @@ const StudentDashboard = () => {
         // All questions answered, mark quiz as completed
         setQuizzes(prevQuizzes =>
           prevQuizzes.map(q =>
-            q.id === quizId ? { ...q, completed: true, inProgress: false } : q
+            q.id === Number(quizId) ? { ...q, completed: true, inProgress: false } : q
           )
         );
         // navigate('/student-dashboard');
@@ -199,6 +216,152 @@ const StudentDashboard = () => {
       setError(err.message);
     }
   };
+
+  // Add this component for displaying quiz performance
+  const QuizPerformanceCard: React.FC<{ quiz: Quiz }> = ({ quiz }) => {
+    interface Performance {
+      total_score: string;
+      max_possible_score: string;
+      rank?: number;
+      percentile?: number;
+    }
+
+    const [performance, setPerformance] = useState<Performance | null>(null);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState<string | null>(null);
+
+    useEffect(() => {
+      const fetchPerformance = async () => {
+        try {
+          setLoading(true);
+          setError(null);
+          
+          const response = await fetch(`${API_BASE_URL}/quiz/student/performance/${quiz.id}/`, {
+            headers: {
+              'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
+              'Content-Type': 'application/json'
+            }
+          });
+          
+          const data = await response.json();
+          
+          if (response.ok && data) {
+            setPerformance({
+              total_score: data.total_score || '0.00',
+              max_possible_score: data.max_possible_score || quiz.total_score?.toFixed(2) || '0.00',
+              rank: data.rank,
+              percentile: data.percentile
+            });
+            setError(null);
+          } else {
+            throw new Error(data.error || 'Failed to fetch performance data');
+          }
+        } catch (error) {
+          console.error('Error fetching performance:', error);
+          setError('Error fetching score');
+          // Set default performance with quiz total score
+          setPerformance({
+            total_score: '0.00',
+            max_possible_score: quiz.total_score?.toFixed(2) || '0.00',
+            rank: undefined,
+            percentile: undefined
+          });
+        } finally {
+          setLoading(false);
+        }
+      };
+
+      if (quiz.completed) {
+        fetchPerformance();
+      } else {
+        setLoading(false);
+      }
+    }, [quiz.id, quiz.completed, quiz.total_score]);
+
+    if (!quiz.completed) return null;
+    
+    const displayScore = performance 
+      ? `${performance.total_score}/${performance.max_possible_score}`
+      : loading 
+        ? 'Loading...' 
+        : `0.00/${quiz.total_score?.toFixed(2) || '0.00'}`;
+
+    return (
+      <div className="performance-card bg-white rounded-lg shadow-md p-4 mt-4">
+        <h4 className="text-lg font-semibold mb-2">Performance</h4>
+        <div className="grid grid-cols-2 gap-4">
+          <div>
+            <p className="text-sm text-gray-600">Score</p>
+            {loading ? (
+              <div className="text-center py-2">Loading score...</div>
+            ) : (
+              <p className="text-xl font-bold">{displayScore}</p>
+            )}
+          </div>
+          {performance?.rank && (
+            <div>
+              <p className="text-sm text-gray-600">Rank</p>
+              <p className="text-xl font-bold">{performance.rank}</p>
+            </div>
+          )}
+          {performance?.percentile && (
+            <div>
+              <p className="text-sm text-gray-600">Percentile</p>
+              <p className="text-xl font-bold">{performance.percentile.toFixed(1)}%</p>
+            </div>
+          )}
+        </div>
+        {error && (
+          <div className="text-red-500 text-sm mt-2">
+            {error}
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  // Update the quiz card rendering to include performance metrics
+  const renderQuizCard = (quiz: Quiz) => (
+    <div key={quiz.id} className="quiz-card bg-white rounded-lg shadow-md p-6">
+      <div className="flex justify-between items-start">
+        <div>
+          <h3 className="text-xl font-semibold">{quiz.title}</h3>
+          <p className="text-gray-600 mt-1">{quiz.course_id} - {quiz.topic}</p>
+          <div className="flex items-center mt-2">
+            <span className={`px-2 py-1 rounded text-sm ${
+              quiz.difficulty === 'easy' ? 'bg-green-100 text-green-800' :
+              quiz.difficulty === 'medium' ? 'bg-yellow-100 text-yellow-800' :
+              'bg-red-100 text-red-800'
+            }`}>
+              {quiz.difficulty}
+            </span>
+          </div>
+        </div>
+        <div className="text-right">
+          <p className="text-sm text-gray-500">
+            {quiz.completed_questions || 0}/{quiz.total_questions || 0} questions
+          </p>
+          {quiz.completed && (
+            <p className="text-sm font-medium text-green-600 mt-1">Completed</p>
+          )}
+        </div>
+      </div>
+      <QuizPerformanceCard quiz={quiz} />
+      <div className="mt-4">
+        <button
+          onClick={() => handleQuizClick(quiz.id)}
+          disabled={quiz.completed}
+          className={`w-full py-2 rounded-md ${
+            quiz.completed 
+              ? 'bg-gray-300 cursor-not-allowed' 
+              : 'bg-blue-600 hover:bg-blue-700 text-white'
+          }`}
+        >
+          {quiz.completed ? 'Completed' : 'Start Quiz'}
+        </button>
+      </div>
+    </div>
+  );
 
   if (isLoading) {
     return (
@@ -282,10 +445,12 @@ const StudentDashboard = () => {
                 <div className="p-2 bg-purple-100 rounded-lg">
                   <Clock className="h-6 w-6 text-purple-600" />
                 </div>
-                <span className="text-sm font-medium text-purple-600">Today</span>
+                <span className="text-sm font-medium text-purple-600">Available</span>
               </div>
-              <h3 className="text-2xl font-bold text-gray-900">2</h3>
-              <p className="text-gray-600">Upcoming Exams</p>
+              <h3 className="text-2xl font-bold text-gray-900">
+                {quizzes.filter(quiz => !quiz.completed).length}
+              </h3>
+              <p className="text-gray-600">Unattempted Quizzes</p>
             </div>
 
             <div className="bg-white p-6 rounded-xl shadow-md hover:shadow-lg transition-all duration-200">
@@ -306,46 +471,9 @@ const StudentDashboard = () => {
             <div className="lg:col-span-2">
               {/* Upcoming Exams Section */}
               <div className="bg-white rounded-xl shadow-md p-6">
-                <h2 className="text-xl font-semibold text-gray-900 mb-6">Upcoming Exams</h2>
+                <h2 className="text-xl font-semibold text-gray-900 mb-6">Your Quizzes</h2>
                 <div className="space-y-4">
-                  {quizzes.map((quiz) => (
-                    <div 
-                      key={quiz.id} 
-                      className="p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-all duration-200"
-                    >
-                      <div className="flex items-center justify-between">
-                        <div>
-                          <h3 className="font-medium text-gray-900 mb-1">
-                            {quiz.title}
-                          </h3>
-                          <div className="flex items-center text-sm text-gray-600">
-                            <span>Topic: {quiz.topic}</span>
-                            <span className="mx-2 text-gray-400">•</span>
-                            <span>Difficulty: {quiz.difficulty}</span>
-                          </div>
-                        </div>
-                        <div className="flex items-center">
-                          {quiz.completed ? (
-                            <div className="flex items-center text-green-600">
-                              <Award className="h-4 w-4 mr-1" />
-                              <span className="text-sm font-medium">Attempted</span>
-                              {quiz.score !== undefined && (
-                                <span className="ml-1 text-sm font-medium">• Score: {quiz.score}%</span>
-                              )}
-                            </div>
-                          ) : (
-                            <button
-                              onClick={() => handleQuizClick(quiz)}
-                              className="flex items-center text-blue-600 hover:text-blue-800"
-                            >
-                              <span className="mr-1">Start</span>
-                              <ChevronRight className="h-4 w-4" />
-                            </button>
-                          )}
-                        </div>
-                      </div>
-                    </div>
-                  ))}
+                  {quizzes.map((quiz) => renderQuizCard(quiz))}
                   {quizzes.length === 0 && (
                     <p className="text-gray-600 text-center py-4">No exams available at the moment.</p>
                   )}
@@ -421,26 +549,73 @@ const StudentDashboard = () => {
               {/* Performance Overview */}
               <div className="bg-white rounded-xl shadow-md p-6">
                 <h2 className="text-xl font-semibold text-gray-900 mb-6">Performance Overview</h2>
-                <div className="space-y-6">
-                  <div>
-                    <div className="flex justify-between items-center mb-2">
-                      <span className="text-sm font-medium text-gray-600">Class Rank</span>
-                      <span className="text-lg font-bold text-purple-600">#3</span>
-                    </div>
-                    <div className="w-full bg-gray-200 rounded-full h-2">
-                      <div className="bg-purple-600 h-2 rounded-full" style={{ width: '90%' }}></div>
-                    </div>
+                {quizPerformances.length > 0 ? (
+                  <div className="space-y-6">
+                    {quizPerformances.map((performance) => (
+                      <div key={performance.quizId} className="bg-gray-50 rounded-lg p-4">
+                        <div className="mb-3">
+                          <h3 className="text-lg font-semibold text-gray-800">{performance.quizTitle}</h3>
+                          <p className="text-sm text-gray-600">{performance.courseId}</p>
+                        </div>
+                        
+                        <div className="grid grid-cols-2 gap-4">
+                          <div>
+                            <div className="flex justify-between items-center mb-2">
+                              <span className="text-sm font-medium text-gray-600">Class Rank</span>
+                              <span className="text-lg font-bold text-purple-600">
+                                {performance.rank ? `#${performance.rank}` : 'N/A'}
+                              </span>
+                            </div>
+                            <div className="w-full bg-gray-200 rounded-full h-2">
+                              <div 
+                                className="bg-purple-600 h-2 rounded-full" 
+                                style={{ 
+                                  width: `${performance.rank ? Math.max(5, 100 - ((performance.rank - 1) * 10)) : 0}%` 
+                                }}
+                              ></div>
+                            </div>
+                          </div>
+                          
+                          <div>
+                            <div className="flex justify-between items-center mb-2">
+                              <span className="text-sm font-medium text-gray-600">Percentile</span>
+                              <span className="text-lg font-bold text-blue-600">
+                                {performance.percentile ? `${performance.percentile.toFixed(1)}th` : 'N/A'}
+                              </span>
+                            </div>
+                            <div className="w-full bg-gray-200 rounded-full h-2">
+                              <div 
+                                className="bg-blue-600 h-2 rounded-full" 
+                                style={{ width: `${performance.percentile || 0}%` }}
+                              ></div>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="mt-4">
+                          <div className="flex justify-between items-center mb-2">
+                            <span className="text-sm font-medium text-gray-600">Score</span>
+                            <span className="text-lg font-bold text-green-600">
+                              {`${performance.score}/${performance.maxScore}`}
+                            </span>
+                          </div>
+                          <div className="w-full bg-gray-200 rounded-full h-2">
+                            <div 
+                              className="bg-green-600 h-2 rounded-full" 
+                              style={{ 
+                                width: `${(parseFloat(performance.score) / parseFloat(performance.maxScore)) * 100}%` 
+                              }}
+                            ></div>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
                   </div>
-                  <div>
-                    <div className="flex justify-between items-center mb-2">
-                      <span className="text-sm font-medium text-gray-600">Percentile</span>
-                      <span className="text-lg font-bold text-blue-600">95th</span>
-                    </div>
-                    <div className="w-full bg-gray-200 rounded-full h-2">
-                      <div className="bg-blue-600 h-2 rounded-full" style={{ width: '95%' }}></div>
-                    </div>
+                ) : (
+                  <div className="text-center py-8 text-gray-500">
+                    No quiz performances available yet. Complete a quiz to see your performance metrics.
                   </div>
-                </div>
+                )}
               </div>
             </div>
           </div>

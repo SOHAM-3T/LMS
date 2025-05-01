@@ -9,10 +9,11 @@ export function setTrulyGlobalSessionExpired(val: boolean) {
 
 // Create axios instance with base URL
 const api = axios.create({
-  baseURL: "http://localhost:8000",  // Remove /auth from baseURL
+  baseURL: "http://localhost:8000",
   headers: {
     "Content-Type": "application/json",
   },
+  withCredentials: true,  // Enable sending cookies
 });
 
 export { api };

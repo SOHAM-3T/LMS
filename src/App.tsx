@@ -11,6 +11,8 @@ import FacultyDashboard from './pages/FacultyDashboard';
 import CreateQuiz from './pages/CreateQuiz';
 import EditQuiz from './pages/EditQuiz';
 import TakeQuiz from './pages/TakeQuiz';
+import StudentPerformanceDetail from './pages/StudentPerformanceDetail';
+import QuizPerformanceView from './pages/QuizPerformanceView';
 import { SessionProvider } from './SessionContext';
 
 function AppContent() {
@@ -60,7 +62,9 @@ function AppContent() {
         '/login',
         '/signup',
         '/forgot-password',
-        '/create-quiz'
+        '/create-quiz',
+        '/edit-quiz/' + location.pathname.split('/edit-quiz/')[1],
+        '/faculty/quiz-performance'
       ].includes(location.pathname) &&
       !/^\/student\/quiz\/[^/]+\/attempt$/.test(location.pathname) && <Navbar />}
       <Routes>
@@ -73,6 +77,18 @@ function AppContent() {
         <Route path="/create-quiz" element={<CreateQuiz />} />
         <Route path="/edit-quiz/:quizId" element={<EditQuiz />} />
         <Route path="/student/quiz/:quizId/attempt" element={<TakeQuiz />} />
+        <Route path="/faculty/student/:studentId/performance" element={<StudentPerformanceDetail />} />
+        <Route path="/faculty/quiz/:quizId/performance" element={<StudentPerformanceDetail />} />
+        <Route path="/faculty/quiz-performance" element={<QuizPerformanceView />} />
+        <Route path="*" element={
+          <div className="min-h-screen flex items-center justify-center">
+            <div className="text-center">
+              <h1 className="text-2xl font-bold mb-4">Page Not Found</h1>
+              <p className="text-gray-600">The page you're looking for doesn't exist.</p>
+              <p className="text-gray-600">Current path: {location.pathname}</p>
+            </div>
+          </div>
+        } />
       </Routes>
     </div>
   );
