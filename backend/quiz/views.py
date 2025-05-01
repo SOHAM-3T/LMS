@@ -171,8 +171,16 @@ def get_student_performance(request, quiz_id=None):
         
         if quiz_id:
             try:
-                # First check if the quiz exists
+                # First check if the quiz exists and is assigned to the student
                 quiz = Quiz.objects.get(id=quiz_id)
+                assignment_exists = QuizAssignment.objects.filter(
+                    quiz=quiz,
+                    student=request.user
+                ).exists()
+                
+                if not assignment_exists:
+                    return Response({"error": "Quiz not assigned to you"}, 
+                                  status=status.HTTP_404_NOT_FOUND)
                 
                 # Get or create performance record
                 performance, created = StudentPerformance.objects.get_or_create(
@@ -184,9 +192,8 @@ def get_student_performance(request, quiz_id=None):
                     }
                 )
                 
-                # If just created or needs update, update the performance
-                if created or performance.max_possible_score == 0:
-                    performance.update_performance()
+                # Always update performance to ensure latest data
+                performance.update_performance()
                 
                 # Return formatted response
                 data = {
@@ -195,15 +202,13 @@ def get_student_performance(request, quiz_id=None):
                     'rank': performance.rank,
                     'percentile': float(performance.percentile) if performance.percentile else None
                 }
-                print(f"Returning performance data for quiz {quiz_id}: {data}")
                 return Response(data)
                 
             except Quiz.DoesNotExist:
-                print(f"Quiz {quiz_id} not found")
                 return Response({"error": "Quiz not found"}, 
                               status=status.HTTP_404_NOT_FOUND)
             except Exception as e:
-                print(f"Error processing performance data for quiz {quiz_id}: {str(e)}")
+                logger.error(f"Error processing performance data for quiz {quiz_id}: {str(e)}")
                 return Response({"error": "Error processing performance data"}, 
                               status=status.HTTP_500_INTERNAL_SERVER_ERROR)
         

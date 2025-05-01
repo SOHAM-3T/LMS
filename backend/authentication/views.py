@@ -13,9 +13,14 @@ from .models import OTPVerification
 from datetime import timedelta
 import random
 import string
+import jwt
 from .serializers import UserSerializer, OTPSerializer
 
 User = get_user_model()
+
+def generate_access_token(user):
+    refresh = RefreshToken.for_user(user)
+    return str(refresh.access_token)
 
 class RegisterView(APIView):
     def post(self, request):
