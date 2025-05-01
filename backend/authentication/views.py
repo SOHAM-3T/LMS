@@ -481,11 +481,7 @@ class AllStudentsView(APIView):
                 "username": student.username,
                 "first_name": student.first_name,
                 "last_name": student.last_name,
-                "email": student.email,
-                "average_score": 85,  # Placeholder - replace with actual score calculation
-                "attendance": 90,      # Placeholder - replace with actual attendance calculation
-                "class_rank": 3,       # Placeholder - replace with actual rank calculation
-                "percentile": 95       # Placeholder - replace with actual percentile calculation
+                "email": student.email
             } for student in students]
 
             return Response(students_data, status=status.HTTP_200_OK)

@@ -1,5 +1,5 @@
 from rest_framework import serializers
-from .models import Question, Quiz, QuizAssignment
+from .models import Question, Quiz, QuizAssignment, StudentPerformance
 import json
 
 class QuestionSerializer(serializers.ModelSerializer):
@@ -62,6 +62,7 @@ class QuizSerializer(serializers.ModelSerializer):
         # Retrieve uploaded images for questions
         images = self.context['request'].FILES.getlist('images')
         # Create each question with its corresponding image
+        questions = []
         for idx, question_data in enumerate(questions_data):
             question_data.setdefault('topic', quiz.topic)
             question_data.setdefault('difficulty', quiz.difficulty)
@@ -69,35 +70,85 @@ class QuizSerializer(serializers.ModelSerializer):
             # Avoid duplicate image kwarg if present in question_data
             question_data.pop('image', None)
             image = images[idx] if idx < len(images) else None
-            Question.objects.create(
+            question = Question.objects.create(
                 quiz=quiz,
                 created_by=user,
                 image=image,
                 **question_data
             )
+            questions.append(question)
+        
+        # Add questions to the quiz instance
+        quiz.questions.set(questions)
+        quiz.save()
+        
+        # Return the quiz with questions
         return quiz
 
     def update(self, instance, validated_data):
-        questions_data = validated_data.pop('questions', None)
-        user = self.context['request'].user if 'request' in self.context else None
-        validated_data['created_by'] = user
+        """
+        Update a quiz and its questions.
+        """
+        questions_data = validated_data.pop('questions', [])
+        user = self.context['request'].user
+
+        # Update quiz fields
         for attr, value in validated_data.items():
             setattr(instance, attr, value)
         instance.save()
-        if questions_data is not None:
-            # Remove old questions and add new ones
-            instance.questions.all().delete()
+
+        # Handle questions
+        if questions_data:
+            # Get existing questions
+            existing_questions = {str(q.id): q for q in instance.questions.all()}
+            
+            # Update or create questions
+            updated_questions = []
             for question_data in questions_data:
-                question_data.setdefault('topic', instance.topic)
-                question_data.setdefault('difficulty', instance.difficulty)
-                question_data.pop('quiz', None)
-                try:
-                    Question.objects.create(quiz=instance, created_by=user, **question_data)
-                except Exception as e:
-                    pass
-        else:
-            pass
+                question_id = str(question_data.get('id'))
+                if question_id in existing_questions:
+                    # Update existing question
+                    question = existing_questions[question_id]
+                    for attr, value in question_data.items():
+                        if attr not in ['id', 'quiz', 'created_by', 'created_at']:
+                            setattr(question, attr, value)
+                    question.save()
+                    updated_questions.append(question)
+                else:
+                    # Create new question
+                    question_data.pop('id', None)
+                    question_data.pop('quiz', None)
+                    question_data.pop('created_by', None)
+                    question_data.pop('created_at', None)
+                    question = Question.objects.create(
+                        quiz=instance,
+                        created_by=user,
+                        **question_data
+                    )
+                    updated_questions.append(question)
+
+            # Set the updated questions
+            instance.questions.set(updated_questions)
+
         return instance
+
+class StudentPerformanceSerializer(serializers.ModelSerializer):
+    """Serializer for student performance data"""
+    class Meta:
+        model = StudentPerformance
+        fields = ['id', 'student', 'quiz', 'total_score', 'max_possible_score', 
+                  'percentile', 'rank', 'created_at', 'updated_at']
+        read_only_fields = ['id', 'created_at', 'updated_at']
+
+    def to_representation(self, instance):
+        """Customize the output representation"""
+        ret = super().to_representation(instance)
+        ret['student_name'] = f"{instance.student.first_name} {instance.student.last_name}"
+        ret['student_roll_no'] = instance.student.roll_no
+        ret['quiz_title'] = instance.quiz.title
+        ret['course_id'] = instance.quiz.course_id
+        ret['topic'] = instance.quiz.topic
+        return ret
 
 class QuizAssignmentSerializer(serializers.ModelSerializer):
     class Meta:
