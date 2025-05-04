@@ -594,13 +594,16 @@ const CreateQuiz: React.FC = () => {
 
   return (
     <Box className="create-quiz-container">
-      <Button
-        startIcon={<ArrowBackIcon />}
-        onClick={() => navigate('/faculty-dashboard')}
-        className="back-button"
-      >
-        Back to Dashboard
-      </Button>
+      <Box className="back-button-container" style={{ marginBottom: '20px', zIndex: 1, display: 'flex', justifyContent: 'flex-start' }}>
+        <Button
+          startIcon={<ArrowBackIcon />}
+          onClick={() => navigate('/faculty-dashboard')}
+          className="back-button"
+          variant="outlined"
+        >
+          Back to Dashboard
+        </Button>
+      </Box>
       <Box className="create-quiz-content">
         <ProgressSidebar />
         <Box className="main-content">

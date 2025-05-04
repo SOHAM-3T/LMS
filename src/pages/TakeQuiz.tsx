@@ -46,7 +46,6 @@ const TakeQuiz: React.FC = () => {
         const metaRes = await api.get(`/quiz/quiz/${quizId}/`);
         const title = metaRes.data.title || `Quiz ${quizId}`;
         const questionsRes = await api.get(`/quiz/student/quiz/${quizId}/questions/`);
-        
         setQuiz({
           id: Number(quizId),
           title,
@@ -65,16 +64,19 @@ const TakeQuiz: React.FC = () => {
   const handleChange = (assignmentId: number, value: string | string[], type?: string) => {
     setAnswers(prev => ({
       ...prev,
-      [assignmentId]: type === 'checkbox' ? (value as string[]).join(',') : value as string
+      [assignmentId]: Array.isArray(value) ? value.join(',') : value as string
     }));
   };
 
+  // FIX: Use 'mcq' for multi-select, not 'checkbox'
   const handleCheckboxChange = (assignmentId: number, option: string) => {
-    const currentAnswer = answers[assignmentId] ? answers[assignmentId].split(',') : [];
+    const currentAnswer = answers[assignmentId]
+      ? answers[assignmentId].split(',').filter(Boolean)
+      : [];
     const newAnswer = currentAnswer.includes(option)
       ? currentAnswer.filter(a => a !== option)
       : [...currentAnswer, option];
-    handleChange(assignmentId, newAnswer, 'checkbox');
+    handleChange(assignmentId, newAnswer, 'mcq');
   };
 
   const handleSubmit = async () => {
@@ -203,8 +205,6 @@ const TakeQuiz: React.FC = () => {
   if (!quiz) return null;
 
   const currentQuestion = quiz.questions[current];
-  console.log("Current Question:", currentQuestion);
-  console.log("Question Type:", currentQuestion?.type);
   const progress = ((current + 1) / quiz.questions.length) * 100;
 
   return (
@@ -235,6 +235,7 @@ const TakeQuiz: React.FC = () => {
           </div>
         )}
 
+        {/* Single choice */}
         {currentQuestion.type === 'multiple_choice' && (
           <div className="quiz-options">
             {currentQuestion.options?.map((option, idx) => (
@@ -251,13 +252,14 @@ const TakeQuiz: React.FC = () => {
           </div>
         )}
 
-        {currentQuestion.type === 'checkbox' && (
+        {/* Multiple correct answers (API sends type: 'mcq') */}
+        {currentQuestion.type === 'mcq' && (
           <div className="quiz-options">
             {currentQuestion.options?.map((option, idx) => (
               <button
                 key={idx}
                 className={`quiz-option ${
-                  answers[currentQuestion.assignment_id]?.includes(option) ? 'selected' : ''
+                  answers[currentQuestion.assignment_id]?.split(',').includes(option) ? 'selected' : ''
                 }`}
                 onClick={() => handleCheckboxChange(currentQuestion.assignment_id, option)}
               >
@@ -267,6 +269,7 @@ const TakeQuiz: React.FC = () => {
           </div>
         )}
 
+        {/* Text/Short Answer */}
         {(currentQuestion.type === 'text' || currentQuestion.type === 'short_answer') && (
           <textarea
             className="quiz-answer-input"
