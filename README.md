@@ -183,5 +183,5 @@ NIT Andhra Pradesh, CSE
 - Email: [423166@student.nitandhra.ac.in](mailto:423166@student.nitandhra.ac.in)  
 ---
 
-**Built with passion for education and technology 🚀**
+**Built with ❤️ for education and technology 🚀**
 
